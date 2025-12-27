@@ -11,9 +11,9 @@ export default function WishlistPage() {
     {
       id: 1,
       name: "Premium Holstein Dairy Cow",
-      seller: "Green Valley Farm",
-      price: 2500,
-      location: "Texas, USA",
+      seller: "Green Agro Farm",
+      price: 250000,
+      location: "Dhaka, Bangladesh",
       image: "/black-and-white-holstein-dairy-cow.jpg",
       age: "3 years",
       verified: true,
@@ -22,9 +22,9 @@ export default function WishlistPage() {
     {
       id: 2,
       name: "Merino Sheep - Premium Wool",
-      seller: "Highland Ranch",
-      price: 350,
-      location: "Montana, USA",
+      seller: "Himalayan Ranch",
+      price: 35000,
+      location: "Sylhet, Bangladesh",
       image: "/white-merino-sheep-with-wool.jpg",
       age: "2 years",
       verified: true,
@@ -34,8 +34,8 @@ export default function WishlistPage() {
       id: 3,
       name: "Jersey Dairy Cow",
       seller: "Meadow Farm",
-      price: 2200,
-      location: "California, USA",
+      price: 220000,
+      location: "Chittagong, Bangladesh",
       image: "/brown-jersey-dairy-cow.jpg",
       age: "4 years",
       verified: false,
@@ -45,8 +45,8 @@ export default function WishlistPage() {
       id: 4,
       name: "White Farm Ducks",
       seller: "Lakeside Poultry",
-      price: 45,
-      location: "Oregon, USA",
+      price: 4500,
+      location: "Barisal, Bangladesh",
       image: "/white-ducks-on-farm.jpg",
       age: "4 months",
       verified: true,
@@ -125,7 +125,7 @@ export default function WishlistPage() {
                   </div>
 
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xl font-bold text-emerald-600">${item.price.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-emerald-600">Tk{item.price.toLocaleString()}</p>
                     <p className="text-sm text-muted-foreground">Age: {item.age}</p>
                   </div>
 

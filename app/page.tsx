@@ -4,6 +4,7 @@ import { User, Plus, Users } from "lucide-react";
 import { Hero } from "./components/Hero";
 import { BrowseCategories } from "./components/BrowseCategory";
 import { Features } from "./components/Feature";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -25,6 +26,7 @@ export default function Home() {
           </h2>
           <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-3">
             {/* Step 1 */}
+            <Link href="/signup">
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
                 <User className="h-8 w-8" />
@@ -36,6 +38,7 @@ export default function Home() {
                 Sign up for free and create your profile.
               </p>
             </div>
+            </Link>
             {/* Step 2 */}
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -126,12 +129,14 @@ export default function Home() {
           <p className="mt-2 text-lg">
             Create an account today and start trading livestock.
           </p>
+          <Link href="/signup">
           <Button
             variant="outline"
             className="mt-8 border-white text-white hover:bg-white hover:text-emerald-600"
           >
             Sign Up Now
           </Button>
+          </Link>
         </div>
       </section>
     </main>

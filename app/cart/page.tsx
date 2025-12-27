@@ -13,8 +13,8 @@ export default function CartPage() {
     {
       id: 1,
       name: "Premium Holstein Dairy Cow",
-      seller: "Green Valley Farm",
-      price: 2500,
+      seller: "Green Agro Farm",
+      price: 250000,
       quantity: 1,
       image: "/black-and-white-holstein-dairy-cow.jpg",
       age: "3 years",
@@ -24,7 +24,7 @@ export default function CartPage() {
       id: 2,
       name: "Healthy Broiler Chickens",
       seller: "Sunrise Poultry",
-      price: 150,
+      price: 1500,
       quantity: 10,
       image: "/healthy-white-broiler-chickens.jpg",
       age: "6 weeks",
@@ -34,7 +34,7 @@ export default function CartPage() {
       id: 3,
       name: "Boer Goat - Breeding Quality",
       seller: "Mountain Ridge Ranch",
-      price: 450,
+      price: 4500,
       quantity: 2,
       image: "/brown-and-white-boer-goat.jpg",
       age: "2 years",
@@ -43,8 +43,8 @@ export default function CartPage() {
   ]
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0)
-  const shipping = 50
-  const tax = subtotal * 0.1
+  const shipping = 500
+  const tax = subtotal * 0.05
   const total = subtotal + shipping + tax
 
   return (
@@ -107,7 +107,7 @@ export default function CartPage() {
                             </Button>
                           </div>
                           <p className="text-xl font-bold text-emerald-600">
-                            ${(item.price * item.quantity).toLocaleString()}
+                            Tk{(item.price * item.quantity).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -126,20 +126,20 @@ export default function CartPage() {
                   <div className="space-y-3 mb-4">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-medium">${subtotal.toLocaleString()}</span>
+                      <span className="font-medium">Tk{subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Shipping</span>
-                      <span className="font-medium">${shipping}</span>
+                      <span className="font-medium">Tk{shipping}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Tax (10%)</span>
-                      <span className="font-medium">${tax.toLocaleString()}</span>
+                      <span className="font-medium">Tk{tax.toLocaleString()}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-lg">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold text-emerald-600">${total.toLocaleString()}</span>
+                      <span className="font-bold text-emerald-600">Tk{total.toLocaleString()}</span>
                     </div>
                   </div>
 

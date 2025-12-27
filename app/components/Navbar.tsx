@@ -33,6 +33,9 @@ import {
 import Link from "next/link"
 
 export function Navbar() {
+  const isSignedIn = false; // Placeholder for authentication status
+  const userName = "Anik"; // Placeholder for user name
+  const userRole = "Buyer"; // Placeholder for user role
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white">
       {/* Main Navbar */}
@@ -100,73 +103,81 @@ export function Navbar() {
           </Link>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-3 border-l pl-4 hover:bg-transparent">
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium text-gray-900">Anik </span>
-                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">Buyer</Badge>
-              </div>
-              <Avatar className="h-10 w-10 bg-emerald-500">
-                <AvatarFallback className="bg-emerald-500 text-white font-medium">A</AvatarFallback>
-              </Avatar>
-              <ChevronDown className="h-4 w-4 text-gray-700" />
+        {isSignedIn ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="flex items-center gap-3 border-l pl-4 hover:bg-transparent">
+                <div className="flex flex-col items-end">
+                  <span className="text-sm font-medium text-gray-900">{userName}</span>
+                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">{userRole}</Badge>
+                </div>
+                <Avatar className="h-10 w-10 bg-emerald-500">
+                  <AvatarFallback className="bg-emerald-500 text-white font-medium">{userName[0]}</AvatarFallback>
+                </Avatar>
+                <ChevronDown className="h-4 w-4 text-gray-700" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Profile & Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Payment Methods
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Wallet className="mr-2 h-4 w-4" />
+                Credit Wallet
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MapPin className="mr-2 h-4 w-4" />
+                Addresses
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Heart className="mr-2 h-4 w-4" />
+                Wishlist
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Messages
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Buy Requests
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Plus className="mr-2 h-4 w-4" />
+                Post Request
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Building2 className="mr-2 h-4 w-4" />
+                Create Organization
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Users className="mr-2 h-4 w-4" />
+                Referrals
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Link href="/signin">
+            <Button variant="ghost" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+              Sign In
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile & Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Payment Methods
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Wallet className="mr-2 h-4 w-4" />
-              Credit Wallet
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <MapPin className="mr-2 h-4 w-4" />
-              Addresses
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Heart className="mr-2 h-4 w-4" />
-              Wishlist
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Messages
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Buy Requests
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Plus className="mr-2 h-4 w-4" />
-              Post Request
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Building2 className="mr-2 h-4 w-4" />
-              Create Organization
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Users className="mr-2 h-4 w-4" />
-              Referrals
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </Link>
+        )}
       </div>
     </nav>
   )

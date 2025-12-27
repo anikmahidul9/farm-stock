@@ -16,8 +16,8 @@ const listings = [
   {
     id: 1,
     title: "Premium Holstein Dairy Cattle",
-    price: 45000,
-    location: "Punjab, India",
+    price: 450000,
+    location: "Dhaka, Bangladesh",
     seller: "Rajesh Farms",
     rating: 4.8,
     reviews: 24,
@@ -30,8 +30,8 @@ const listings = [
   {
     id: 2,
     title: "Healthy Broiler Chickens",
-    price: 350,
-    location: "Maharashtra, India",
+    price: 3500,
+    location: "Chittagong, Bangladesh",
     seller: "Poultry Paradise",
     rating: 4.6,
     reviews: 18,
@@ -44,8 +44,8 @@ const listings = [
   {
     id: 3,
     title: "Merino Wool Sheep",
-    price: 18000,
-    location: "Rajasthan, India",
+    price: 180000,
+    location: "Sylhet, Bangladesh",
     seller: "Desert Livestock",
     rating: 4.9,
     reviews: 31,
@@ -58,8 +58,8 @@ const listings = [
   {
     id: 4,
     title: "Boer Goats for Meat",
-    price: 12000,
-    location: "Tamil Nadu, India",
+    price: 120000,
+    location: "Khulna, Bangladesh",
     seller: "Southern Farms",
     rating: 4.7,
     reviews: 15,
@@ -72,8 +72,8 @@ const listings = [
   {
     id: 5,
     title: "Jersey Dairy Cows",
-    price: 38000,
-    location: "Kerala, India",
+    price: 380000,
+    location: "Rajshahi, Bangladesh",
     seller: "Green Pastures",
     rating: 4.8,
     reviews: 22,
@@ -86,8 +86,8 @@ const listings = [
   {
     id: 6,
     title: "Free Range Ducks",
-    price: 800,
-    location: "West Bengal, India",
+    price: 8000,
+    location: "Barisal, Bangladesh",
     seller: "River Farm",
     rating: 4.5,
     reviews: 12,
@@ -100,7 +100,7 @@ const listings = [
 ]
 
 const categories = ["All", "Cattle", "Poultry", "Sheep", "Goats", "Fish", "Dairy"]
-const priceRanges = ["All Prices", "Under ₹5,000", "₹5,000 - ₹20,000", "₹20,000 - ₹50,000", "Above ₹50,000"]
+const priceRanges = ["All Prices", "Under Tk 5,000", "Tk 5,000 - Tk 20,000", "Tk 20,000 - Tk 50,000", "Above Tk 50,000"]
 
 export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
@@ -246,7 +246,7 @@ export default function MarketplacePage() {
                       <h3 className="font-semibold line-clamp-1">{listing.title}</h3>
                       <Badge variant="outline">{listing.category}</Badge>
                     </div>
-                    <p className="text-2xl font-bold text-emerald-600">₹{listing.price.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-emerald-600">Tk{listing.price.toLocaleString()}</p>
                   </CardHeader>
                   <CardContent className="pb-3">
                     <div className="space-y-2 text-sm text-muted-foreground">
