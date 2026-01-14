@@ -109,17 +109,15 @@ export default function MarketplacePage() {
       );
 
       const querySnapshot = await getDocs(q);
-      let existingConversation: { id: string, participants: string[] } | null = null;
 
-      querySnapshot.forEach(doc => {
+      // Find the existing conversation directly
+      const foundConversationDoc = querySnapshot.docs.find(doc => {
         const data = doc.data();
-        if (data.participants.includes(sellerId)) {
-          existingConversation = { id: doc.id, ...data } as { id: string, participants: string[] };
-        }
+        return data && data.participants && Array.isArray(data.participants) && data.participants.includes(sellerId);
       });
 
-      if (existingConversation) {
-        router.push(`/messages/${existingConversation.id}`);
+      if (foundConversationDoc) {
+        router.push(`/messages/${foundConversationDoc.id}`);
       } else {
         const newConversationRef = await addDoc(collection(db, "conversations"), {
           participants: [user.uid, sellerId],

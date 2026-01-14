@@ -16,7 +16,11 @@ interface CustomUserData {
   profileImageUrl?: string; // The mapped field for frontend consumption
   isVerified?: boolean;
   isLiked?: boolean;
-  // Add any other fields you store in the 'users' collection
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postcode?: string;
 }
 
 // Define the shape of the context data

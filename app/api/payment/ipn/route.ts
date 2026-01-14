@@ -94,8 +94,8 @@ export async function POST(request: Request) {
 
     } else {
       // Handle other statuses like FAILED, CANCELLED
-      await updateDoc(orderDoc.ref, { status: status.toLowerCase() });
-      console.log(`Order status updated to ${status.toLowerCase()} for tran_id: ${tran_id}`);
+      await updateDoc(orderDoc.ref, { status: (status as string).toLowerCase() });
+      console.log(`Order status updated to ${(status as string).toLowerCase()} for tran_id: ${tran_id}`);
     }
 
     return new NextResponse('IPN Processed Successfully', { status: 200 });
