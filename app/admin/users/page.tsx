@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react" // Added useEffect
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -15,74 +15,97 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, MoreVertical, UserCheck, UserX, Shield } from "lucide-react"
+import { Heart, Search, MoreVertical, UserCheck, UserX, Shield } from "lucide-react" // Added Heart icon
+import { db } from '@/lib/firebase'; // Import firebase db
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'; // Import firestore functions
+import { Spinner } from '@/components/ui/spinner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 
-const users = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    type: "Seller",
-    status: "Active",
-    verified: true,
-    products: 45,
-    revenue: "$12,456",
-    joined: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    type: "Buyer",
-    status: "Active",
-    verified: true,
-    products: 0,
-    revenue: "$0",
-    joined: "2024-02-20",
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    type: "Seller",
-    status: "Pending",
-    verified: false,
-    products: 23,
-    revenue: "$8,234",
-    joined: "2024-03-10",
-  },
-  {
-    id: 4,
-    name: "Alice Williams",
-    email: "alice@example.com",
-    type: "Seller",
-    status: "Suspended",
-    verified: true,
-    products: 12,
-    revenue: "$3,456",
-    joined: "2024-01-05",
-  },
-  {
-    id: 5,
-    name: "Charlie Brown",
-    email: "charlie@example.com",
-    type: "Buyer",
-    status: "Active",
-    verified: false,
-    products: 0,
-    revenue: "$0",
-    joined: "2024-03-25",
-  },
-]
+interface User {
+  uid: string; // Firebase document ID
+  firstName: string; // New field
+  lastName: string; // New field
+  email: string;
+  type: "Seller" | "Buyer";
+  status: "Active" | "Pending" | "Suspended";
+  verified: boolean;
+  products?: number;
+  revenue?: string;
+  joined: string;
+  isLiked: boolean;
+  profileImage?: string; // New field for image display
+}
 
 function UsersContent() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
 
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'users'));
+      const fetchedUsers: User[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Filter out admin users
+        if (data.role === 'admin') {
+          return;
+        }
+        fetchedUsers.push({
+          uid: doc.id,
+          firstName: data.firstName || "", // Retrieve firstName
+          lastName: data.lastName || "",   // Retrieve lastName
+          email: data.email || "N/A",
+          type: data.role === 'seller' ? 'Seller' : 'Buyer',
+          status: data.status || "Active",
+          verified: data.isVerified || false,
+          products: data.products || 0,
+          revenue: data.revenue || "$0",
+          joined: data.joined || new Date().toISOString().split('T')[0],
+          isLiked: data.isLiked || false,
+          profileImage: data.profileImage || undefined, // Retrieve profileImage
+        });
+      });
+      setUsers(fetchedUsers);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      setError("Failed to load users.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleToggleLike = async (userUid: string, currentLikedStatus: boolean) => {
+    try {
+      const userRef = doc(db, 'users', userUid);
+      await updateDoc(userRef, {
+        isLiked: !currentLikedStatus,
+      });
+      // Optimistically update UI or re-fetch
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.uid === userUid ? { ...user, isLiked: !currentLikedStatus } : user
+        )
+      );
+    } catch (err) {
+      console.error("Error toggling like status:", err);
+      // Revert UI if optimistic update was done, or show error toast
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
+    const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      fullName.includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = typeFilter === "all" || user.type === typeFilter
     const matchesStatus = statusFilter === "all" || user.status === statusFilter
@@ -111,6 +134,23 @@ function UsersContent() {
       pending: 0,
     },
   ]
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Spinner className="h-10 w-10 text-primary" />
+        <p className="text-muted-foreground ml-2">Loading users...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center text-red-500">
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -188,16 +228,23 @@ function UsersContent() {
                   <TableHead className="text-right">Products</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead>Joined</TableHead>
+                  <TableHead className="text-center">Liked</TableHead> {/* New column for Like */}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.uid}> {/* Changed key to user.uid */}
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      <div className="flex items-center gap-3"> {/* Added flex container */}
+                        <Avatar className="h-9 w-9"> {/* Avatar for image */}
+                          <AvatarImage src={user.profileImage} alt={`${user.firstName} ${user.lastName}'s profile`} />
+                          <AvatarFallback>{user.firstName?.[0]}{user.lastName?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{`${user.firstName} ${user.lastName}`}</div> {/* Combined name */}
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -225,6 +272,15 @@ function UsersContent() {
                     <TableCell className="text-right">{user.products}</TableCell>
                     <TableCell className="text-right font-medium">{user.revenue}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{user.joined}</TableCell>
+                    <TableCell className="text-center"> {/* New TableCell for Like button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleLike(user.uid, user.isLiked)}
+                      >
+                        <Heart className={user.isLiked ? "h-4 w-4 fill-red-500 text-red-500" : "h-4 w-4 text-muted-foreground"} />
+                      </Button>
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

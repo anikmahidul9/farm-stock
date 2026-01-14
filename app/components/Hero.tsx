@@ -3,9 +3,9 @@ import { Search } from "lucide-react"
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-green-50">
+    <section className="relative overflow-hidden bg-linear-to-br from-emerald-50 via-white to-green-50 ">
       {/* Main Hero Content */}
-      <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+      <div className="container mx-auto px-4 py-16 sm:px-6 sm:py-24 lg:px-8 ">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
           {/* Left Content */}
           <div className="flex flex-col justify-center space-y-8">

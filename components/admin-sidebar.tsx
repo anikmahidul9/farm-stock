@@ -14,6 +14,7 @@ import {
   FileText,
   ShieldCheck,
   Bell,
+  LogOut,
 } from "lucide-react"
 import {
   Sidebar,
@@ -28,10 +29,17 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { auth } from "@/lib/firebase"
+import { signOut } from "firebase/auth"
 
 const navigation = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  {
+    name: "Main",
+    items: [
+      { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    ],
+  },
   {
     name: "Inventory",
     items: [
@@ -68,6 +76,16 @@ const navigation = [
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.push("/admin/login")
+    } catch (error) {
+      console.error("Error signing out: ", error)
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -83,39 +101,38 @@ export function AdminSidebar() {
             <SidebarGroupLabel>{section.name}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.href ? (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname === section.href}>
-                      <Link href={section.href}>
-                        <section.icon className="h-4 w-4" />
-                        <span>{section.name}</span>
+                {section.items?.map((item) => (
+                  <SidebarMenuItem key={item.name}>
+                    <SidebarMenuButton asChild isActive={pathname === item.href}>
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                ) : (
-                  section.items?.map((item) => (
-                    <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href}>
-                        <Link href={item.href}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))
-                )}
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
-        <div className="flex items-center gap-3 px-2 group-data-[collapsible=icon]:hidden">
-          <div className="h-8 w-8 rounded-full bg-muted" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium leading-none">Admin User</span>
-            <span className="text-xs text-muted-foreground">admin@market.com</span>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3 px-2 group-data-[collapsible=icon]:hidden">
+            <div className="h-8 w-8 rounded-full bg-muted" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium leading-none">Admin User</span>
+              <span className="text-xs text-muted-foreground">admin@market.com</span>
+            </div>
           </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+                <span className="group-data-[collapsible=icon]:hidden">Logout</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </div>
       </SidebarFooter>
     </Sidebar>

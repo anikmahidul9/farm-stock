@@ -2,8 +2,27 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Package, ShoppingCart, DollarSign } from "lucide-react"
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import Link from "next/link";
 
 export default function AdminDashboardPage() {
+  const [productCount, setProductCount] = useState(0);
+
+  useEffect(() => {
+    const fetchProductCount = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "products"));
+        setProductCount(querySnapshot.size);
+      } catch (error) {
+        console.error("Error fetching product count: ", error);
+      }
+    };
+
+    fetchProductCount();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -56,10 +75,12 @@ export default function AdminDashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">573</div>
-            <p className="text-xs text-muted-foreground">
-              +201 since last hour
-            </p>
+            <Link href="/admin/products">
+              <div className="text-2xl font-bold">{productCount}</div>
+              <p className="text-xs text-muted-foreground">
+                View all products
+              </p>
+            </Link>
           </CardContent>
         </Card>
       </div>

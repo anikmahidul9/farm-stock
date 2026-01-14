@@ -1,173 +1,148 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Eye, Check, X, Truck, Clock } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { useAuth } from "@/components/auth-provider"
+import { db } from "@/lib/firebase"
+import { collection, query, where, getDocs, doc, addDoc, serverTimestamp, orderBy } from "firebase/firestore"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import Link from "next/link"
-import { Suspense } from "react"
+import { format } from "date-fns"
+import Link from "next/link" // Import Link
 
-const orders = [
-  {
-    id: "ORD-2431",
-    customer: "John Doe",
-    date: "Oct 24, 2025",
-    total: 45.0,
-    items: 2,
-    status: "New",
-    delivery: "Pending",
-  },
-  {
-    id: "ORD-2430",
-    customer: "Alice Smith",
-    date: "Oct 23, 2025",
-    total: 32.5,
-    items: 1,
-    status: "Accepted",
-    delivery: "In Transit",
-  },
-  {
-    id: "ORD-2429",
-    customer: "Robert Brown",
-    date: "Oct 22, 2025",
-    total: 89.0,
-    items: 4,
-    status: "Delivered",
-    delivery: "Completed",
-  },
-  {
-    id: "ORD-2428",
-    customer: "Sarah Wilson",
-    date: "Oct 22, 2025",
-    total: 15.75,
-    items: 1,
-    status: "Cancelled",
-    delivery: "N/A",
-  },
-]
+type Offer = {
+  id: string
+  buyRequestId: string
+  buyRequestTitle: string
+  buyerId: string
+  price: number
+  message: string
+  createdAt: any
+  status: 'pending' | 'accepted' | 'rejected'
+  orderId?: string // Added orderId
+}
 
-function OrdersContent() {
-  const [filter, setFilter] = useState("all")
+export default function SellerOrdersPage() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const [offers, setOffers] = useState<Offer[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "New":
-        return "bg-blue-100 text-blue-700 border-blue-200"
-      case "Accepted":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200"
-      case "Delivered":
-        return "bg-muted text-muted-foreground border-transparent"
-      case "Cancelled":
-        return "bg-destructive/10 text-destructive border-destructive/20"
-      default:
-        return ""
+  const fetchOffers = useCallback(async () => {
+    if (!user) return;
+    setLoading(true)
+    const offersQuery = query(collection(db, "offers"), where("sellerId", "==", user.uid), orderBy("createdAt", "desc"))
+    const offersSnapshot = await getDocs(offersQuery)
+    
+    const offersDataPromises = offersSnapshot.docs.map(async offerDoc => {
+        const offer = { id: offerDoc.id, ...offerDoc.data() } as Offer;
+        
+        // If the offer is accepted, try to find the associated order
+        if (offer.status === 'accepted') {
+            const ordersQuery = query(collection(db, "orders"), where("offerId", "==", offer.id));
+            const ordersSnapshot = await getDocs(ordersQuery);
+            if (!ordersSnapshot.empty) {
+                offer.orderId = ordersSnapshot.docs[0].id;
+            }
+        }
+        return offer;
+    });
+
+    const offersData = await Promise.all(offersDataPromises);
+    setOffers(offersData)
+    setLoading(false)
+}, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchOffers()
     }
+  }, [user, fetchOffers])
+
+  const handleMessageBuyer = async (buyerId: string) => {
+    if (!user) return;
+
+    const conversationQuery = query(
+      collection(db, "conversations"),
+      where("participants", "array-contains", user.uid)
+    );
+
+    const querySnapshot = await getDocs(conversationQuery);
+    let existingConversation: { id: string, participants: string[] } | null = null;
+
+    querySnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.participants.includes(buyerId)) {
+            existingConversation = { id: doc.id, ...data } as { id: string, participants: string[] };
+        }
+    });
+
+    if (existingConversation) {
+      router.push(`/messages/${existingConversation.id}`);
+    } else {
+      const newConversationRef = await addDoc(collection(db, "conversations"), {
+        participants: [user.uid, buyerId],
+        lastUpdatedAt: serverTimestamp(),
+        lastRead: {
+          [user.uid]: serverTimestamp()
+        }
+      });
+      router.push(`/messages/${newConversationRef.id}`);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-BD', {
+      style: 'currency',
+      currency: 'BDT',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount).replace('BDT', 'Tk')
+  }
+
+  if (loading) {
+    return <div className="text-center py-10">Loading your sent offers...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Order Management</h1>
-        <p className="text-muted-foreground">Monitor and fulfill your customer orders.</p>
-      </div>
-
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <Tabs defaultValue="all" className="w-full lg:w-auto" onValueChange={setFilter}>
-          <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="all">All Orders</TabsTrigger>
-            <TabsTrigger value="new">New</TabsTrigger>
-            <TabsTrigger value="processing">Processing</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="relative w-full lg:w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search order ID or customer..." className="pl-9 bg-muted/30 border-none" />
-        </div>
-      </div>
-
-      <div className="grid gap-4">
-        {orders.map((order) => (
-          <Card key={order.id} className="border-none shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-            <CardContent className="p-0">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-lg">{order.id}</span>
-                    <Badge variant="outline" className={getStatusBadge(order.status)}>
-                      {order.status}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {order.date}
-                    </span>
-                    <span>Customer: {order.customer}</span>
-                    <span>{order.items} items</span>
-                  </div>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">My Sent Offers</h1>
+      <div className="space-y-4">
+        {offers.length === 0 ? (
+          <p className="text-center text-muted-foreground py-10">You have not sent any offers.</p>
+        ) : (
+          offers.map(offer => (
+            <Card key={offer.id}>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="text-lg">Offer for: {offer.buyRequestTitle}</CardTitle>
+                    {offer.status === 'accepted' && <Badge className="bg-green-100 text-green-800">Accepted</Badge>}
+                    {offer.status === 'rejected' && <Badge variant="destructive">Rejected</Badge>}
+                    {offer.status === 'pending' && <Badge variant="secondary">Pending</Badge>}
                 </div>
-
-                <div className="flex flex-col sm:items-end gap-1 sm:px-8 sm:border-x border-muted-foreground/10">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total Amount
-                  </span>
-                  <span className="text-xl font-bold text-emerald-600">${order.total.toFixed(2)}</span>
+                <CardDescription>
+                  Sent on {offer.createdAt ? format(offer.createdAt.toDate(), "PPP") : 'N/A'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-between items-end">
+                <div>
+                    <p className="text-lg font-bold text-emerald-600 mb-2">{formatCurrency(offer.price)}</p>
+                    <p className="text-muted-foreground text-sm">{offer.message}</p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" asChild title="View Details">
-                    <Link href={`/seller/orders/${order.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  {order.status === "New" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="text-emerald-600 border-emerald-200 bg-transparent"
-                        title="Accept"
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="text-destructive border-destructive/20 bg-transparent"
-                        title="Reject"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                  {order.status === "Accepted" && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="text-blue-600 border-blue-200 bg-transparent"
-                      title="Mark Shipped"
-                    >
-                      <Truck className="h-4 w-4" />
-                    </Button>
-                  )}
+                <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleMessageBuyer(offer.buyerId)}>Message Buyer</Button>
+                    {offer.status === 'accepted' && offer.orderId && (
+                        <Link href={`/orders/${offer.orderId}`}>
+                            <Button size="sm" variant="outline">View Order</Button>
+                        </Link>
+                    )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
-  )
-}
-
-export default function SellerOrders() {
-  return (
-    <Suspense fallback={null}>
-      <OrdersContent />
-    </Suspense>
   )
 }

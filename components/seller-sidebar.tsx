@@ -1,7 +1,12 @@
 "use client"
-import { LayoutDashboard, Package, ShoppingCart, Wallet, User, LogOut, ChevronRight } from "lucide-react"
+import { LayoutDashboard, Package, ShoppingCart, Wallet, User, LogOut, ChevronRight, Home } from "lucide-react" // Added Home icon
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { signOut } from "firebase/auth"; // Import signOut
+import { auth } from "@/lib/firebase"; // Import auth instance
+import { useAuth } from "@/components/auth-provider"; // Import useAuth hook
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
+import { Badge } from "@/components/ui/badge"; // Import Badge component
 
 import {
   Sidebar,
@@ -20,6 +25,11 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const navigation = [
+  {
+    title: "Home",
+    url: "/", // Changed from "/seller" to "/"
+    icon: Home,
+  },
   {
     title: "Overview",
     url: "/seller",
@@ -54,6 +64,22 @@ const navigation = [
 
 export function SellerSidebar() {
   const pathname = usePathname()
+  const { userData, loading } = useAuth(); // Get user data from context
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Optionally redirect to login page or home page after logout
+      // router.push('/login'); // If you have a router instance
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  if (loading) {
+    // Optionally render a minimal sidebar or null during loading
+    return null;
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -107,13 +133,26 @@ export function SellerSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-4">
+        {userData && ( // Only render if userData is available
+          <div className="flex items-center gap-2 mb-4"> {/* Added margin-bottom */}
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={userData.profileImageUrl} alt={`${userData.firstName} ${userData.lastName}'s profile`} />
+              <AvatarFallback className="bg-emerald-600 text-white">
+                {userData.firstName?.[0]}{userData.lastName?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-bold text-base">{`${userData.firstName || ''} ${userData.lastName || ''}`}</span>
+              <span className="text-xs text-muted-foreground">{userData.email}</span>
+              <Badge variant="secondary" className="mt-1 w-fit">{userData.role}</Badge>
+            </div>
+          </div>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-destructive hover:text-destructive">
-              <Link href="/logout">
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </Link>
+            <SidebarMenuButton onClick={handleLogout} className="text-destructive hover:text-destructive">
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

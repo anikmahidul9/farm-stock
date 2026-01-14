@@ -8,15 +8,8 @@ import {
   MessageSquare,
   ChevronDown,
   User,
-  CreditCard,
-  MapPin,
   LayoutDashboard,
-  MessageCircle,
-  Plus,
-  Building2,
-  Users,
   LogOut,
-  Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,11 +24,110 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { useAuth } from "@/components/auth-provider"
+import { auth, db } from "@/lib/firebase"
+import { signOut } from "firebase/auth"
+import { useRouter } from "next/navigation"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect, useState } from "react"
+import { collection, onSnapshot } from "firebase/firestore"
+import { NotificationBell } from "@/components/notification-bell"
+import { MessageBell } from "@/components/message-bell"
 
 export function Navbar() {
-  const isSignedIn = false; // Placeholder for authentication status
-  const userName = "Anik"; // Placeholder for user name
-  const userRole = "Buyer"; // Placeholder for user role
+  const { user, userData, loading } = useAuth()
+  const router = useRouter()
+  const [wishlistCount, setWishlistCount] = useState(0)
+
+  useEffect(() => {
+    if (user) {
+      const wishlistRef = collection(db, "users", user.uid, "wishlist")
+      const unsubscribe = onSnapshot(wishlistRef, (snapshot) => {
+        setWishlistCount(snapshot.size)
+      })
+      return () => unsubscribe()
+    } else {
+      setWishlistCount(0)
+    }
+  }, [user])
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      // Redirect to home page after logout
+      router.push("/")
+    } catch (error) {
+      console.error("Error signing out: ", error)
+    }
+  }
+
+  const renderUserActions = () => {
+    if (loading) {
+      return <Skeleton className="h-10 w-24" />
+    }
+
+    if (user && userData) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-3 border-l pl-4 hover:bg-transparent">
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-medium text-gray-900">{userData.firstName}</span>
+                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs capitalize">{userData.role}</Badge>
+              </div>
+              <Avatar className="h-10 w-10 bg-emerald-500">
+                <AvatarFallback className="bg-emerald-500 text-white font-medium">{userData.firstName?.[0]}</AvatarFallback>
+              </Avatar>
+              <ChevronDown className="h-4 w-4 text-gray-700" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/buyer/profile')}>
+              <User className="mr-2 h-4 w-4" />
+              Profile & Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              let dashboardUrl = '/dashboard';
+              if (userData.role === 'admin') {
+                dashboardUrl = '/admin';
+              } else if (userData.role === 'seller') {
+                dashboardUrl = '/seller';
+              } else if (userData.role === 'buyer') {
+                dashboardUrl = '/buyer';
+              }
+              router.push(dashboardUrl);
+            }}>
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-red-600" onSelect={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <Link href="/signin">
+          <Button variant="ghost" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+            Sign In
+          </Button>
+        </Link>
+        <Link href="/signup">
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-sm font-medium">
+            Sign Up
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white">
       {/* Main Navbar */}
@@ -81,103 +173,22 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* Action Icons */}
+        {/* Action Icons & User Menu */}
         <div className="flex items-center gap-2">
-          <Link href="wishlist">
-          <Button variant="ghost" size="icon" className="relative">
-            <Heart className="h-5 w-5 text-gray-700" />
-            <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
-              3
-            </Badge>
-          </Button>
-          </Link>
-        <Link href="/notifications">
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5 text-gray-700" />
-          </Button>
-        </Link>
-        <Link href="/messages">
-          <Button variant="ghost" size="icon">
-            <MessageSquare className="h-5 w-5 text-gray-700" />
-          </Button>
-          </Link>
-        </div>
-
-        {isSignedIn ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-3 border-l pl-4 hover:bg-transparent">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-medium text-gray-900">{userName}</span>
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">{userRole}</Badge>
-                </div>
-                <Avatar className="h-10 w-10 bg-emerald-500">
-                  <AvatarFallback className="bg-emerald-500 text-white font-medium">{userName[0]}</AvatarFallback>
-                </Avatar>
-                <ChevronDown className="h-4 w-4 text-gray-700" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                Profile & Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Payment Methods
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Wallet className="mr-2 h-4 w-4" />
-                Credit Wallet
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MapPin className="mr-2 h-4 w-4" />
-                Addresses
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Heart className="mr-2 h-4 w-4" />
-                Wishlist
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Messages
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Buy Requests
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Plus className="mr-2 h-4 w-4" />
-                Post Request
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Building2 className="mr-2 h-4 w-4" />
-                Create Organization
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Users className="mr-2 h-4 w-4" />
-                Referrals
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Link href="/signin">
-            <Button variant="ghost" className="text-sm font-medium text-gray-700 hover:text-gray-900">
-              Sign In
+          <Link href="/wishlist">
+            <Button variant="ghost" size="icon" className="relative">
+              <Heart className="h-5 w-5 text-gray-700" />
+              {wishlistCount > 0 && (
+                <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
+                  {wishlistCount}
+                </Badge>
+              )}
             </Button>
           </Link>
-        )}
+           <MessageBell/>
+            <NotificationBell />
+          {renderUserActions()}
+        </div>
       </div>
     </nav>
   )

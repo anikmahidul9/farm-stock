@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Search, MoreHorizontal, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -13,61 +13,179 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
-
-const products = [
-  {
-    id: "PRD-001",
-    name: "Organic Tomatoes",
-    category: "Vegetables",
-    price: 4.5,
-    stock: 45,
-    status: "Approved",
-    image: "/ripe-tomatoes.png",
-  },
-  {
-    id: "PRD-002",
-    name: "Fresh Spinach",
-    category: "Leafy Greens",
-    price: 2.99,
-    stock: 20,
-    status: "Pending",
-    image: "/fresh-spinach.png",
-  },
-  {
-    id: "PRD-003",
-    name: "Honey (500g)",
-    category: "Natural Sweets",
-    price: 12.0,
-    stock: 12,
-    status: "Rejected",
-    image: "/golden-honey.png",
-  },
-  {
-    id: "PRD-004",
-    name: "Free Range Eggs",
-    category: "Poultry",
-    price: 6.5,
-    stock: 30,
-    status: "Approved",
-    image: "/assorted-eggs.png",
-  },
-]
+import { useAuth } from "@/components/auth-provider";
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, increment } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Product } from "@/types";
+import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
+import { useToast } from '@/components/ui/use-toast';
 
 export default function SellerProducts() {
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [search, setSearch] = useState("")
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{ id: string; category: string } | null>(null);
+  const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
+  const [productToUpdateStock, setProductToUpdateStock] = useState<Product | null>(null);
+  const [newStock, setNewStock] = useState<number>(0);
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
-      case "Pending":
-        return "bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200"
-      case "Rejected":
-        return "bg-destructive/10 text-destructive hover:bg-destructive/10 border-destructive/20"
-      default:
-        return ""
+  useEffect(() => {
+    const fetchSellerProducts = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const productsQuery = query(
+          collection(db, "products"),
+          where("sellerId", "==", user.uid)
+        );
+        const querySnapshot = await getDocs(productsQuery);
+        const productsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt.toDate(),
+          updatedAt: doc.data().updatedAt.toDate(),
+        })) as Product[];
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Error fetching seller products: ", error);
+        toast({
+          title: "Error",
+          description: "Failed to load products.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      fetchSellerProducts();
     }
+  }, [user, authLoading, toast]);
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "products", productToDelete.id));
+
+      // Decrement product count in category
+      const categoryRef = doc(db, "categories", productToDelete.category);
+      await updateDoc(categoryRef, {
+        numberOfProducts: increment(-1),
+      });
+
+      setProducts(products.filter(p => p.id !== productToDelete.id));
+      toast({
+        title: "Product Deleted!",
+        description: "The product has been successfully removed.",
+      });
+    } catch (error) {
+      console.error("Error deleting product: ", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setProductToDelete(null);
+    }
+  };
+
+  const handleUpdateStock = async () => {
+    if (!productToUpdateStock) return;
+
+    setIsUpdatingStock(true);
+    try {
+      const productRef = doc(db, "products", productToUpdateStock.id);
+      await updateDoc(productRef, {
+        stock: newStock,
+        updatedAt: new Date(), // Update timestamp
+      });
+
+      setProducts(products.map(p =>
+        p.id === productToUpdateStock.id ? { ...p, stock: newStock, updatedAt: new Date() } : p
+      ));
+      toast({
+        title: "Stock Updated!",
+        description: `Stock for ${productToUpdateStock.name} updated to ${newStock}.`,
+      });
+    } catch (error) {
+      console.error("Error updating stock: ", error);
+      toast({
+        title: "Error",
+        description: "Failed to update stock. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStock(false);
+      setIsStockDialogOpen(false);
+      setProductToUpdateStock(null);
+      setNewStock(0);
+    }
+  };
+
+  const getStatusColor = (stock: number) => {
+    if (stock === 0) {
+      return "bg-destructive/10 text-destructive hover:bg-destructive/10 border-destructive/20";
+    } else if (stock <= 50) { // Assuming 50 is the low stock threshold
+      return "bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200";
+    } else {
+      return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200";
+    }
+  }
+
+  const getStatusText = (stock: number) => {
+    if (stock === 0) {
+      return "Out of Stock";
+    } else if (stock <= 50) {
+      return "Low Stock";
+    } else {
+      return "In Stock";
+    }
+  }
+
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner className="h-8 w-8" />
+      </div>
+    );
   }
 
   return (
@@ -114,48 +232,126 @@ export default function SellerProducts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => (
-              <TableRow key={product.id} className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="h-10 w-10 rounded-lg overflow-hidden border bg-muted">
-                    <img
-                      src={product.image || "/placeholder.svg"}
-                      alt={product.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>{product.category}</TableCell>
-                <TableCell>${product.price.toFixed(2)}</TableCell>
-                <TableCell>{product.stock}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={getStatusColor(product.status)}>
-                    {product.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit Details</DropdownMenuItem>
-                      <DropdownMenuItem>Update Stock</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">Delete Product</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+            {filteredProducts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center">No products found.</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredProducts.map((product) => (
+                <TableRow key={product.id} className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="h-10 w-10 rounded-lg overflow-hidden border bg-muted">
+                      <Image
+                        src={product.imageUrls[0] || "/placeholder.svg"}
+                        alt={product.name}
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>{product.category}</TableCell>
+                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>{product.stock}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={getStatusColor(product.stock)}>
+                      {getStatusText(product.stock)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/seller/products/edit/${product.id}`}>Edit Details</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setProductToUpdateStock(product);
+                            setNewStock(product.stock); // Pre-fill with current stock
+                            setIsStockDialogOpen(true);
+                          }}
+                        >
+                          Update Stock
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            setProductToDelete({ id: product.id, category: product.category });
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          Delete Product
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your product
+              from our servers and remove its associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Stock for {productToUpdateStock?.name}</DialogTitle>
+            <DialogDescription>
+              Enter the new stock quantity for this product.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="stock" className="text-right">
+                New Stock
+              </Label>
+              <Input
+                id="stock"
+                type="number"
+                value={newStock}
+                onChange={(e) => setNewStock(Number(e.target.value))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStockDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateStock} disabled={isUpdatingStock}>
+              {isUpdatingStock && <Spinner className="mr-2 h-4 w-4" />}
+              Update Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
