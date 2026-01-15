@@ -2,6 +2,7 @@
 
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
+import { CartProvider } from "@/components/cart-provider";
 
 export default function RootLayoutClient({
   children,
@@ -10,7 +11,9 @@ export default function RootLayoutClient({
 }>) {
   return (
     <AuthProvider>
-      {children}
+      <CartProvider>
+        {children}
+      </CartProvider>
     </AuthProvider>
   );
 }

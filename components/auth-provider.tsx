@@ -6,6 +6,34 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Spinner } from '@/components/ui/spinner'; // Assuming a spinner component exists
 
+interface FarmDetails {
+  farmName?: string;
+  ownerName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+}
+
+interface BankDetails {
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  branchCode?: string;
+}
+
+interface DocumentDetails {
+  url: string;
+  uploadedAt: any; // Firebase Timestamp
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+interface VerificationDocuments {
+  tradeLicense?: DocumentDetails;
+  nid?: DocumentDetails;
+  nationalId?: DocumentDetails;
+}
+
 // Define the shape of your custom user data from Firestore
 interface CustomUserData {
   firstName?: string;
@@ -21,6 +49,10 @@ interface CustomUserData {
   city?: string;
   state?: string;
   postcode?: string;
+  farmLocation?: string;
+  farmDetails?: FarmDetails;
+  bankDetails?: BankDetails;
+  verificationDocuments?: VerificationDocuments;
 }
 
 // Define the shape of the context data

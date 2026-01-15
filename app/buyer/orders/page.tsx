@@ -53,6 +53,7 @@ type Order = {
   id: string;
   tran_id: string;
   amount: number;
+  totalAmount?: number; // Add this line
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled' | 'refunded' | 'pending_verification';
   orderType?: 'single_offer' | 'cart_checkout';
   createdAt: any;
@@ -164,7 +165,7 @@ export default function BuyerOrdersPage() {
       const buyRequests = requestsSnapshot.docs.map(doc => ({ 
         id: doc.id, 
         ...doc.data() 
-      })) as BuyRequest;
+      })) as BuyRequest[];
 
       // Fetch offers for each request
       const populatedRequests = await Promise.all(
@@ -178,7 +179,7 @@ export default function BuyerOrdersPage() {
           const offers = offersSnapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data() 
-          })) as Offer;
+          })) as Offer[];
           return { request, offers };
         })
       );
@@ -294,17 +295,14 @@ export default function BuyerOrdersPage() {
       );
 
       const querySnapshot = await getDocs(conversationQuery);
-      let existingConversation: { id: string, participants: string[] } | null = null;
-
-      querySnapshot.forEach(doc => {
+      
+      const foundConversationDoc = querySnapshot.docs.find(doc => {
         const data = doc.data();
-        if (data.participants.includes(sellerId)) {
-          existingConversation = { id: doc.id, ...data } as { id: string, participants: string[] };
-        }
+        return data && data.participants && Array.isArray(data.participants) && data.participants.includes(sellerId);
       });
 
-      if (existingConversation) {
-        router.push(`/messages/${existingConversation.id}`);
+      if (foundConversationDoc) {
+        router.push(`/messages/${foundConversationDoc.id}`);
       } else {
         const newConversationRef = await addDoc(collection(db, "conversations"), {
           participants: [user.uid, sellerId],

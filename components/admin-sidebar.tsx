@@ -45,7 +45,7 @@ const navigation = [
     items: [
       { name: "Products", href: "/admin/products", icon: Package },
       { name: "Categories", href: "/admin/categories", icon: Tags },
-      { name: "Stock Alerts", href: "/admin/stock-alerts", icon: Bell },
+     // { name: "Stock Alerts", href: "/admin/stock-alerts", icon: Bell },
     ],
   },
   {
@@ -53,25 +53,25 @@ const navigation = [
     items: [
       { name: "All Users", href: "/admin/users", icon: Users },
       { name: "Seller Approvals", href: "/admin/sellers/approvals", icon: ShieldCheck },
-      { name: "Referral System", href: "/admin/referrals", icon: UserPlus },
+      //{ name: "Referral System", href: "/admin/referrals", icon: UserPlus },
     ],
   },
   {
     name: "Transactions",
     items: [
-      { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+     // { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
       { name: "Wallets", href: "/admin/wallets", icon: Wallet },
     ],
   },
-  {
-    name: "Platform",
-    items: [
-      { name: "Homepage", href: "/admin/homepage", icon: Home },
-      { name: "Delivery", href: "/admin/delivery", icon: Truck },
-      { name: "Content (FAQ/Legal)", href: "/admin/content", icon: FileText },
-      { name: "Settings", href: "/admin/settings", icon: Settings },
-    ],
-  },
+  // {
+  //   name: "Platform",
+  //   items: [
+  //     { name: "Homepage", href: "/admin/homepage", icon: Home },
+  //     { name: "Delivery", href: "/admin/delivery", icon: Truck },
+  //     { name: "Content (FAQ/Legal)", href: "/admin/content", icon: FileText },
+  //     { name: "Settings", href: "/admin/settings", icon: Settings },
+  //   ],
+  // },
 ]
 
 export function AdminSidebar() {

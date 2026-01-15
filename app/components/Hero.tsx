@@ -1,7 +1,55 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Search } from "lucide-react"
+import { useEffect, useState } from "react"
+import { collection, getDocs, query, where } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { Skeleton } from "@/components/ui/skeleton"
+
+// Function to format large numbers
+const formatStat = (num: number): string => {
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K+`
+  }
+  return `${num}`
+}
 
 export function Hero() {
+  const [stats, setStats] = useState({
+    activeListings: 0,
+    trustedSellers: 0,
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const getStats = async () => {
+      try {
+        // Fetch active listings count
+        const productsQuery = query(collection(db, "products"))
+        const productsSnapshot = await getDocs(productsQuery)
+        const activeListings = productsSnapshot.size
+
+        // Fetch trusted sellers count
+        const sellersQuery = query(
+          collection(db, "users"),
+          where("role", "==", "seller"),
+          where("isVerified", "==", true)
+        )
+        const sellersSnapshot = await getDocs(sellersQuery)
+        const trustedSellers = sellersSnapshot.size
+
+        setStats({ activeListings, trustedSellers })
+      } catch (error) {
+        console.error("Error fetching stats: ", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getStats()
+  }, [])
+
   return (
     <section className="relative overflow-hidden bg-linear-to-br from-emerald-50 via-white to-green-50 ">
       {/* Main Hero Content */}
@@ -40,18 +88,37 @@ export function Hero() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 pt-8 border-t border-gray-200">
-              <div>
-                <div className="text-3xl font-bold text-emerald-600">50K+</div>
-                <div className="text-sm text-gray-600 mt-1">Active Listings</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-emerald-600">15K+</div>
-                <div className="text-sm text-gray-600 mt-1">Trusted Sellers</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-emerald-600">98%</div>
-                <div className="text-sm text-gray-600 mt-1">Satisfaction Rate</div>
-              </div>
+              {loading ? (
+                <>
+                  <div>
+                    <Skeleton className="h-9 w-20 mb-2" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-9 w-20 mb-2" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-9 w-20 mb-2" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div className="text-3xl font-bold text-emerald-600">{formatStat(stats.activeListings)}</div>
+                    <div className="text-sm text-gray-600 mt-1">Active Listings</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-emerald-600">{formatStat(stats.trustedSellers)}</div>
+                    <div className="text-sm text-gray-600 mt-1">Trusted Sellers</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-emerald-600">98%</div>
+                    <div className="text-sm text-gray-600 mt-1">Satisfaction Rate</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

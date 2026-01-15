@@ -69,17 +69,14 @@ export default function SellerOrdersPage() {
     );
 
     const querySnapshot = await getDocs(conversationQuery);
-    let existingConversation: { id: string, participants: string[] } | null = null;
-
-    querySnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.participants.includes(buyerId)) {
-            existingConversation = { id: doc.id, ...data } as { id: string, participants: string[] };
-        }
+    
+    const foundConversationDoc = querySnapshot.docs.find(doc => {
+      const data = doc.data();
+      return data && data.participants && Array.isArray(data.participants) && data.participants.includes(buyerId);
     });
 
-    if (existingConversation) {
-      router.push(`/messages/${existingConversation.id}`);
+    if (foundConversationDoc) {
+      router.push(`/messages/${foundConversationDoc.id}`);
     } else {
       const newConversationRef = await addDoc(collection(db, "conversations"), {
         participants: [user.uid, buyerId],

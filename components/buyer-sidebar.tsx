@@ -37,7 +37,7 @@ const navigation = [
     name: "Orders & Activity",
     items: [
       { name: "My Orders & Offers", href: "/buyer/orders", icon: History },
-      { name: "Wishlist", href: "/buyer/wishlist", icon: Heart },
+      { name: "Wishlist", href: "/wishlist", icon: Heart },
       { name: "My Reviews", href: "/buyer/reviews", icon: Star },
     ],
   },

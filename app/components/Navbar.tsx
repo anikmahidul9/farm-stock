@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
+import { useCart } from "@/components/cart-provider"
 import { auth, db } from "@/lib/firebase"
 import { signOut } from "firebase/auth"
 import { useRouter } from "next/navigation"
@@ -36,6 +37,7 @@ import { MessageBell } from "@/components/message-bell"
 
 export function Navbar() {
   const { user, userData, loading } = useAuth()
+  const { cartCount } = useCart()
   const router = useRouter()
   const [wishlistCount, setWishlistCount] = useState(0)
 
@@ -76,7 +78,7 @@ export function Navbar() {
                 <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs capitalize">{userData.role}</Badge>
               </div>
               <Avatar className="h-10 w-10 bg-emerald-500">
-                <AvatarFallback className="bg-emerald-500 text-white font-medium">{userData.firstName?.[0]}</AvatarFallback>
+               <AvatarImage src={userData.profileImageUrl} alt={`${userData.firstName} ${userData.lastName}'s profile`} />
               </Avatar>
               <ChevronDown className="h-4 w-4 text-gray-700" />
             </Button>
@@ -84,7 +86,14 @@ export function Navbar() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/buyer/profile')}>
+            <DropdownMenuItem onClick={() =>{
+              if(userData.role === 'seller'){
+                router.push('/seller/profile')
+            } else if(userData.role === 'buyer'){
+                router.push('/buyer/profile')
+            } else{
+                router.push('/admin/profile')
+            }}}>
               <User className="mr-2 h-4 w-4" />
               Profile & Settings
             </DropdownMenuItem>
@@ -156,8 +165,8 @@ export function Navbar() {
 
         {/* Search Bar */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input type="search" placeholder="Search" className="pl-10 bg-gray-50 border-gray-200" />
+          {/* <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input type="search" placeholder="Search" className="pl-10 bg-gray-50 border-gray-200" /> */}
         </div>
 
         {/* Navigation Links */}
@@ -168,8 +177,13 @@ export function Navbar() {
           <Link href="/buy-request" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
             Buy Requests
           </Link>
-          <Link href="/cart" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
+          <Link href="/cart" className="relative flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
             <ShoppingCart className="h-4 w-4" />
+            {cartCount > 0 && (
+              <Badge className="absolute -right-3 -top-2 h-4 w-4 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
+                {cartCount}
+              </Badge>
+            )}
           </Link>
         </div>
 

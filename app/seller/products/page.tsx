@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider";
-import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, increment } from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, increment, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
 import Image from "next/image";
@@ -135,7 +135,7 @@ export default function SellerProducts() {
       });
 
       setProducts(products.map(p =>
-        p.id === productToUpdateStock.id ? { ...p, stock: newStock, updatedAt: new Date() } : p
+        p.id === productToUpdateStock.id ? { ...p, stock: newStock, updatedAt: Timestamp.fromDate(new Date()) } : p
       ));
       toast({
         title: "Stock Updated!",
