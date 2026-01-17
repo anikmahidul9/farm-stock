@@ -23,15 +23,31 @@ type Product = {
   age: number
   isVerified?: boolean
   inStock?: boolean
+  unitName?: string
 }
 
 export default function WishlistPage() {
   const { user } = useAuth()
   const [wishlistItems, setWishlistItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [unitMap, setUnitMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (!user) {
+    const fetchUnits = async () => {
+      try {
+        const unitsSnapshot = await getDocs(collection(db, "units"));
+        const uMap = new Map<string, string>();
+        unitsSnapshot.docs.forEach(doc => uMap.set(doc.id, doc.data().name));
+        setUnitMap(uMap);
+      } catch (error) {
+        console.error("Error fetching units: ", error);
+      }
+    };
+    fetchUnits();
+  }, []);
+
+  useEffect(() => {
+    if (!user || unitMap.size === 0) {
       setLoading(false)
       return
     }
@@ -57,6 +73,7 @@ export default function WishlistPage() {
               age: productData.age,
               isVerified: productData.isVerified,
               inStock: productData.stock > 0, // Assuming stock is a number
+              unitName: unitMap.get(productData.unit) || "N/A",
             } as Product
           }
           return null
@@ -75,7 +92,7 @@ export default function WishlistPage() {
     }
 
     fetchWishlistItems()
-  }, [user])
+  }, [user, unitMap])
 
   const handleRemoveFromWishlist = async (productId: string) => {
     if (!user) return
@@ -181,7 +198,9 @@ export default function WishlistPage() {
                   </div>
 
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xl font-bold text-emerald-600">Tk{item.price.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-emerald-600">
+                      Tk{item.price.toLocaleString()} / {item.unitName}
+                    </p>
                     <p className="text-sm text-muted-foreground">Age: {item.age} days</p>
                   </div>
 

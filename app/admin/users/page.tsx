@@ -112,7 +112,7 @@ function UsersContent() {
   }, [searchQuery, typeFilter, statusFilter, dateFilter, users]);
 
   const applyFilters = (usersList: User[], search: string, type: string, status: string, date: string) => {
-    let filtered = usersList.filter((user) => {
+    const filtered = usersList.filter((user) => {
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       const matchesSearch =
         fullName.includes(search.toLowerCase()) ||

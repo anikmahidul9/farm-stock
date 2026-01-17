@@ -18,7 +18,7 @@ type Conversation = {
 
 
 export function MessageBell() {
-  const { user } = useAuth()
+  const { user,userData } = useAuth()
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -55,7 +55,13 @@ export function MessageBell() {
       variant="ghost"
       size="icon"
       className="relative"
-      onClick={() => router.push("/messages")}
+      onClick={() => {
+        if(userData?.role=='seller'){
+          router.push("/seller/messages")
+        }else{
+          router.push("/messages")
+        }
+      }} 
     >
       <MessageSquare className="h-5 w-5" />
       {unreadCount > 0 && (

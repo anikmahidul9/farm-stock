@@ -25,11 +25,11 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const navigation = [
-  {
-    title: "Home",
-    url: "/", // Changed from "/seller" to "/"
-    icon: Home,
-  },
+  // {
+  //   title: "Home",
+  //   url: "/", // Changed from "/seller" to "/"
+  //   icon: Home,
+  // },
   {
     title: "Overview",
     url: "/seller",
@@ -50,11 +50,11 @@ const navigation = [
     url: "/seller/orders",
     icon: ShoppingCart,
   },
-  {
-    title: "Earnings",
-    url: "/seller/earnings",
-    icon: Wallet,
-  },
+  // {
+  //   title: "Earnings",
+  //   url: "/seller/earnings",
+  //   icon: Wallet,
+  // },
   {
     title: "Profile",
     url: "/seller/profile",

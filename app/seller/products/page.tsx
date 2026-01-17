@@ -42,18 +42,23 @@ import Image from "next/image";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from '@/components/ui/use-toast';
 
+type ProductWithUnit = Product & {
+  unitName?: string;
+};
+
 export default function SellerProducts() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [search, setSearch] = useState("")
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{ id: string; category: string } | null>(null);
   const [isStockDialogOpen, setIsStockDialogOpen] = useState(false);
-  const [productToUpdateStock, setProductToUpdateStock] = useState<Product | null>(null);
+  const [productToUpdateStock, setProductToUpdateStock] = useState<ProductWithUnit | null>(null);
   const [newStock, setNewStock] = useState<number>(0);
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+  const [unitMap, setUnitMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const fetchSellerProducts = async () => {
@@ -64,17 +69,26 @@ export default function SellerProducts() {
 
       setLoading(true);
       try {
+        const unitsSnapshot = await getDocs(collection(db, "units"));
+        const uMap = new Map<string, string>();
+        unitsSnapshot.docs.forEach(doc => uMap.set(doc.id, doc.data().name));
+        setUnitMap(uMap);
+
         const productsQuery = query(
           collection(db, "products"),
           where("sellerId", "==", user.uid)
         );
         const querySnapshot = await getDocs(productsQuery);
-        const productsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt.toDate(),
-          updatedAt: doc.data().updatedAt.toDate(),
-        })) as Product[];
+        const productsData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+            unitName: uMap.get(data.unit) || "N/A",
+          } as ProductWithUnit;
+        });
         setProducts(productsData);
       } catch (error) {
         console.error("Error fetching seller products: ", error);
@@ -252,7 +266,9 @@ export default function SellerProducts() {
                   </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.category}</TableCell>
-                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    Tk{product.price.toLocaleString()} / {product.unitName}
+                  </TableCell>
                   <TableCell>{product.stock}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusColor(product.stock)}>

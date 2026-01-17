@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, writeBatch, onSnapshot, deleteDoc, setDoc, serverTimestamp, query, where, addDoc } from "firebase/firestore";
+import { collection, getDocs, doc, onSnapshot, deleteDoc, setDoc, serverTimestamp, query, where, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
@@ -80,7 +80,6 @@ export default function MarketplacePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [units, setUnits] = useState<UnitData[]>([]);
   const [categoryMap, setCategoryMap] = useState<Map<string, string>>(new Map());
   const [unitMap, setUnitMap] = useState<Map<string, string>>(new Map());
   const [searchQuery, setSearchQuery] = useState("");
@@ -196,7 +195,6 @@ export default function MarketplacePage() {
           id: doc.id,
           name: doc.data().name
         })) as UnitData[];
-        setUnits(unitsData);
         const uMap = new Map<string, string>();
         unitsData.forEach(unit => uMap.set(unit.id, unit.name));
         setUnitMap(uMap);
@@ -491,7 +489,9 @@ export default function MarketplacePage() {
                         <h3 className="font-semibold line-clamp-1">{product.name}</h3>
                         <Badge variant="outline">{product.categoryName}</Badge>
                       </div>
-                      <p className="text-2xl font-bold text-emerald-600">{formatCurrency(product.price)}</p>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {formatCurrency(product.price)} / {product.unitName}
+                      </p>
                       {product.rating !== undefined && product.reviews !== undefined && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />

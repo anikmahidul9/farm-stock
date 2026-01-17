@@ -22,7 +22,6 @@ import {
   serverTimestamp, 
   addDoc, 
   writeBatch,
-  query,
   getDocs 
 } from "firebase/firestore"
 import { useToast } from "@/components/ui/use-toast"
@@ -37,7 +36,7 @@ type CartItem = {
   quantity: number
   sellerId: string
   sellerName: string
-  addedAt: any
+  addedAt: Date
   stock?: number;
 }
 
@@ -332,11 +331,11 @@ export default function CartPage() {
         console.error("Payment initiation failed:", data);
         throw new Error(data.error || data.failedreason || "Failed to initiate payment.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Checkout failed:", error);
       toast({
         title: "Checkout Error",
-        description: error.message || "Failed to proceed to checkout. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to proceed to checkout. Please try again.",
         variant: "destructive",
       });
       setPaymentLoading(false);

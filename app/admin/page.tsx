@@ -119,12 +119,9 @@ export default function AdminDashboardPage() {
         setAllOrders(ordersData);
         setOrderCount(ordersData.length);
 
-        let revenue = 0;
-        ordersData.forEach(order => {
-          if (order.status === 'paid' || order.status === 'delivered') {
-            revenue += (order.totalAmount || order.amount);
-          }
-        });
+        const deliveredOrders = ordersData.filter(order => order.status === 'delivered');
+        const totalDeliveredAmount = deliveredOrders.reduce((sum, order) => sum + (order.totalAmount || order.amount), 0);
+        const revenue = totalDeliveredAmount * 0.05;
         setTotalRevenue(revenue);
         setRecentOrders(ordersData.slice(0, 5)); // Top 5 recent orders
 

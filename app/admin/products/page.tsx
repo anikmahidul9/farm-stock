@@ -18,30 +18,45 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, MoreVertical, Check, X, AlertTriangle, Package } from "lucide-react"
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Product, Category } from "@/types";
+import { Product as ProductType, Category } from "@/types";
 import Image from "next/image";
 import { Spinner } from "@/components/ui/spinner";
+
+type ProductWithUnit = ProductType & {
+  unitName?: string;
+};
 
 function ProductsContent() {
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithUnit[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unitMap, setUnitMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch units
+        const unitsSnapshot = await getDocs(collection(db, "units"));
+        const uMap = new Map<string, string>();
+        unitsSnapshot.docs.forEach(doc => uMap.set(doc.id, doc.data().name));
+        setUnitMap(uMap);
+
         // Fetch products
         const productsSnapshot = await getDocs(collection(db, "products"));
-        const productsData = productsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt.toDate(),
-          updatedAt: doc.data().updatedAt.toDate(),
-        })) as Product[];
+        const productsData = productsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt.toDate(),
+            unitName: uMap.get(data.unit) || "N/A",
+          } as ProductWithUnit;
+        });
         setProducts(productsData);
 
         // Fetch categories for filter
@@ -225,7 +240,9 @@ function ProductsContent() {
                         <Badge variant="outline">{categories.find(cat => cat.id === product.category)?.name || "N/A"}</Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{product.sellerName}</TableCell>
-                      <TableCell className="font-medium">${product.price.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">
+                        Tk{product.price.toLocaleString()} / {product.unitName}
+                      </TableCell>
                       <TableCell className="text-right">
                         <span className={product.stock <= 50 && product.stock > 0 ? "text-orange-600 font-medium" : product.stock === 0 ? "text-red-600 font-medium" : "text-foreground"}>
                           {product.stock}

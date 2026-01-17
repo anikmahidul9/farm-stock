@@ -120,7 +120,7 @@ export default function BuyRequestsPage() {
     }
 
     try {
-      const buyRequestRef = await addDoc(collection(db, "buy-requests"), {
+      await addDoc(collection(db, "buy-requests"), {
         title,
         category,
         quantity: Number(quantity),
@@ -245,7 +245,7 @@ export default function BuyRequestsPage() {
     if (!date) return "No deadline"
     try {
       return format(date, "MMM dd, yyyy")
-    } catch (error) {
+    } catch {
       return "Invalid date"
     }
   }
@@ -262,7 +262,7 @@ export default function BuyRequestsPage() {
       if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
       
       return format(date, "MMM dd, yyyy")
-    } catch (error) {
+    } catch {
       return "recently"
     }
   }
@@ -297,7 +297,7 @@ export default function BuyRequestsPage() {
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Post a Buy Request</DialogTitle>
-                <DialogDescription>Tell sellers what you're looking for and receive offers directly</DialogDescription>
+                <DialogDescription>Tell sellers what you&apos;re looking for and receive offers directly</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
@@ -598,7 +598,7 @@ export default function BuyRequestsPage() {
         <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Send Offer for "{offerRequest?.title}"</DialogTitle>
+              <DialogTitle>Send Offer for &quot;{offerRequest?.title}&quot;</DialogTitle>
               <DialogDescription>
                 Submit your price and a message to the buyer.
               </DialogDescription>

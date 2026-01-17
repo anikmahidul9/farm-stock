@@ -6,11 +6,11 @@ import { doc, getDoc, collection, addDoc, serverTimestamp, getDocs, setDoc, upda
 import { db } from "@/lib/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
 import { MapPin, Star, ShoppingCart, MessageCircle, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import {
@@ -23,7 +23,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/components/auth-provider";
 
@@ -47,15 +46,9 @@ type Product = {
   stock: number;
 };
 
-type CategoryData = {
-  id: string;
-  name: string;
-};
 
-type UnitData = {
-  id: string;
-  name: string;
-};
+
+
 
 export default function ProductDetailPage() {
   const { productId } = useParams();
@@ -267,7 +260,12 @@ export default function ProductDetailPage() {
 };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'BDT' }).format(amount);
+    return new Intl.NumberFormat('en-BD', {
+      style: 'currency',
+      currency: 'BDT',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount).replace('BDT', 'Tk');
   };
 
   if (loading) {
@@ -363,7 +361,9 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <p className="text-5xl font-bold text-emerald-600">{formatCurrency(product.price)}</p>
+            <p className="text-5xl font-bold text-emerald-600">
+              {formatCurrency(product.price)} / {product.unitName}
+            </p>
 
             <Card className="border-none shadow-sm">
               <CardHeader>

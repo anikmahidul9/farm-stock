@@ -406,7 +406,7 @@ export default function OrdersManagement() {
     const summaryData = [
       ["Metric", "Value"],
       ["Total Orders", reportData.totalOrders.toString()],
-      ["Total Revenue", `BDT ${reportData.totalRevenue.toLocaleString()}`],
+      ["Total Sell", `BDT ${reportData.totalRevenue.toLocaleString()}`],
       ["Average Order Value", `BDT ${reportData.avgOrderValue.toFixed(2)}`],
       ["Delivered Orders", reportData.deliveredOrders.toString()],
       ["Cancelled Orders", reportData.cancelledOrders.toString()],
@@ -806,7 +806,7 @@ export default function OrdersManagement() {
             
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Sell</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-emerald-600">BDT {stats.totalRevenue.toLocaleString()}</div>
