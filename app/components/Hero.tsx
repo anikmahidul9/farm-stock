@@ -113,10 +113,10 @@ export function Hero() {
                     <div className="text-3xl font-bold text-emerald-600">{formatStat(stats.trustedSellers)}</div>
                     <div className="text-sm text-gray-600 mt-1">Trusted Sellers</div>
                   </div>
-                  <div>
+                  {/* <div>
                     <div className="text-3xl font-bold text-emerald-600">98%</div>
                     <div className="text-sm text-gray-600 mt-1">Satisfaction Rate</div>
-                  </div>
+                  </div> */}
                 </>
               )}
             </div>

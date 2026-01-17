@@ -47,15 +47,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // User is logged in, set up real-time listener for their cart
     const cartRef = collection(db, `users/${user.uid}/cart`);
     const unsubscribe = onSnapshot(cartRef, (snapshot) => {
-      const fetchedCartItems: CartItem[] = [];
-      let currentCartCount = 0;
+      const fetchedCartItems: CartItem[] = []
       snapshot.forEach(doc => {
         const item = doc.data() as CartItem;
         fetchedCartItems.push(item);
-        currentCartCount += item.quantity;
       });
       setCartItems(fetchedCartItems);
-      setCartCount(currentCartCount);
+      setCartCount(fetchedCartItems.length);
       setLoadingCart(false);
     }, (error) => {
       console.error("Error fetching cart items in CartProvider:", error);
