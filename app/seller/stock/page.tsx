@@ -148,7 +148,7 @@ export default function StockManagement() {
                   <h3 className="font-bold text-lg">{item.name}</h3>
                   <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground">
                     <History className="h-3 w-3" />
-                    Last updated {item.updatedAt.toLocaleDateString()}
+                    Last updated {item.updatedAt.toDate().toLocaleDateString()}
                   </div>
                 </div>
 

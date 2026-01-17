@@ -303,7 +303,7 @@ export default function AdminDashboardPage() {
     
     // Add totals
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text(`Total Sales: ${formatCurrency(totalSales)}`, 14, finalY + 10);
     doc.text(`Total Orders: ${totalOrders}`, 14, finalY + 20);
 
