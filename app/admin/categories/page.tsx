@@ -69,7 +69,7 @@ export default function CategoriesPage() {
             {loading ? <Skeleton className="h-8 w-1/2" /> : <div className="text-2xl font-bold">{categories.length}</div>}
           </CardContent>
         </Card>
-        <Card className="border-primary/20 bg-primary/5">
+        {/* <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Stock Alerts Active</CardTitle>
           </CardHeader>
@@ -78,7 +78,7 @@ export default function CategoriesPage() {
               <Bell className="h-5 w-5 text-primary" />4
             </div>}
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       <Card>

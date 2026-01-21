@@ -1,5 +1,13 @@
 import { Timestamp } from "firebase/firestore";
 
+export type Review = {
+  id: string;
+  user: string;
+  avatar: string;
+  review: string;
+  role: string;
+};
+
 export type Category = {
   id: string;
   name: string;

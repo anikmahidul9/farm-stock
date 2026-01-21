@@ -56,13 +56,13 @@ const navigation = [
       //{ name: "Referral System", href: "/admin/referrals", icon: UserPlus },
     ],
   },
-  {
-    name: "Transactions",
-    items: [
-     // { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
-      { name: "Wallets", href: "/admin/wallets", icon: Wallet },
-    ],
-  },
+  // {
+  //   name: "Transactions",
+  //   items: [
+  //    // { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  //     { name: "Wallets", href: "/admin/wallets", icon: Wallet },
+  //   ],
+  // },
   // {
   //   name: "Platform",
   //   items: [

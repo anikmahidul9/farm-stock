@@ -67,7 +67,7 @@ export function Hero() {
                 Buy and Sell Quality Livestock with Confidence
               </h1>
               <p className="text-lg text-gray-600 leading-relaxed text-pretty">
-                Connect with trusted buyers and sellers across South Africa. Browse thousands of cattle, sheep, goats,
+                Connect with trusted buyers and sellers Bangladesh. Browse thousands of cattle, sheep, goats,
                 and more. Quality assured, secure transactions.
               </p>
             </div>

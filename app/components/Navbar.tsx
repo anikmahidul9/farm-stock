@@ -171,34 +171,41 @@ export function Navbar() {
 
         {/* Navigation Links */}
         <div className="flex items-center gap-6">
-           <Link href="/marketplace" className="text-sm font-medium text-gray-700 hover:text-gray-900">
-            Marketplace
+            <Link href="/marketplace" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+                Marketplace
+              </Link>
+            <Link href="/buy-request" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
+                Buy Requests
           </Link>
-          <Link href="/buy-request" className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
-            Buy Requests
-          </Link>
-          <Link href="/cart" className="relative flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
-            <ShoppingCart className="h-4 w-4" />
-            {cartCount > 0 && (
-              <Badge className="absolute -right-3 -top-2 h-4 w-4 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
-                {cartCount}
-              </Badge>
-            )}
-          </Link>
+          {userData?.role !== 'seller' && (
+            <>
+            
+              <Link href="/cart" className="relative flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900">
+                <ShoppingCart className="h-4 w-4" />
+                {cartCount > 0 && (
+                  <Badge className="absolute -right-3 -top-2 h-4 w-4 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
+                    {cartCount}
+                  </Badge>
+                )}
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Action Icons & User Menu */}
         <div className="flex items-center gap-2">
-          <Link href="/wishlist">
-            <Button variant="ghost" size="icon" className="relative">
-              <Heart className="h-5 w-5 text-gray-700" />
-              {wishlistCount > 0 && (
-                <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
-                  {wishlistCount}
-                </Badge>
-              )}
-            </Button>
-          </Link>
+          {userData?.role !== 'seller' && (
+            <Link href="/wishlist">
+              <Button variant="ghost" size="icon" className="relative">
+                <Heart className="h-5 w-5 text-gray-700" />
+                {wishlistCount > 0 && (
+                  <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs flex items-center justify-center text-white">
+                    {wishlistCount}
+                  </Badge>
+                )}
+              </Button>
+            </Link>
+          )}
            <MessageBell/>
             <NotificationBell />
           {renderUserActions()}

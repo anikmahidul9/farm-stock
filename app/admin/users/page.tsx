@@ -84,7 +84,7 @@ function UsersContent() {
           status: data.status || "Active",
           verified: data.isVerified || false,
           products: data.products || 0,
-          revenue: data.revenue || "$0",
+          revenue: data.revenue || "0",
           joined: joinedDate.toISOString().split('T')[0],
           joinedTimestamp: joinedTimestamp,
           isLiked: data.isLiked || false,
@@ -165,6 +165,56 @@ function UsersContent() {
     }
   };
 
+  const handleVerifyUser = async (userUid: string, currentVerifiedStatus: boolean) => {
+    try {
+      const userRef = doc(db, 'users', userUid);
+      await updateDoc(userRef, {
+        isVerified: !currentVerifiedStatus,
+      });
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.uid === userUid ? { ...user, verified: !currentVerifiedStatus } : user
+        )
+      );
+    } catch (err) {
+      console.error("Error verifying user:", err);
+    }
+  };
+
+  const handleSuspendUser = async (userUid: string, currentStatus: string) => {
+    try {
+      const userRef = doc(db, 'users', userUid);
+      const newStatus = currentStatus === "Suspended" ? "Active" : "Suspended";
+      await updateDoc(userRef, {
+        status: newStatus,
+      });
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.uid === userUid ? { ...user, status: newStatus as "Active" | "Pending" | "Suspended" } : user
+        )
+      );
+    } catch (err) {
+      console.error("Error suspending user:", err);
+    }
+  };
+
+  const handleActivateUser = async (userUid: string, currentStatus: string) => {
+    try {
+      const userRef = doc(db, 'users', userUid);
+      const newStatus = currentStatus === "Active" ? "Pending" : "Active";
+      await updateDoc(userRef, {
+        status: newStatus,
+      });
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.uid === userUid ? { ...user, status: newStatus as "Active" | "Pending" | "Suspended" } : user
+        )
+      );
+    } catch (err) {
+      console.error("Error activating user:", err);
+    }
+  };
+
   // Generate PDF Report
   const generatePDF = (title: string, usersToExport: User[]) => {
     const doc = new jsPDF();
@@ -215,7 +265,7 @@ function UsersContent() {
       user.status,
       user.verified ? "Yes" : "No",
       user.products || 0,
-      user.revenue || "$0",
+      user.revenue || "0",
       user.joined,
       user.isLiked ? "Yes" : "No"
     ]);
@@ -420,7 +470,7 @@ function UsersContent() {
                   <TableHead>Status</TableHead>
                   <TableHead>Verified</TableHead>
                   <TableHead className="text-right">Products</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
+                  {/* <TableHead className="text-right">Revenue</TableHead> */}
                   <TableHead>Joined</TableHead>
                   <TableHead className="text-center">Liked</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -464,7 +514,7 @@ function UsersContent() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">{user.products}</TableCell>
-                    <TableCell className="text-right font-medium">{user.revenue}</TableCell>
+                    {/* <TableCell className="text-right font-medium">{user.revenue}</TableCell> */}
                     <TableCell className="text-sm text-muted-foreground">{user.joined}</TableCell>
                     <TableCell className="text-center">
                       <Button
@@ -485,17 +535,17 @@ function UsersContent() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleActivateUser(user.uid, user.status)}>
                             <UserCheck className="h-4 w-4 mr-2" />
                             {user.status === "Active" ? "Deactivate" : "Activate"}
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleVerifyUser(user.uid, user.verified)}>
                             <Shield className="h-4 w-4 mr-2" />
                             {user.verified ? "Unverify" : "Verify"}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleSuspendUser(user.uid, user.status)}>
                             <UserX className="h-4 w-4 mr-2" />
-                            Suspend User
+                            {user.status === "Suspended" ? "Unsuspend" : "Suspend User"}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             const singleUserPDF = new jsPDF();
@@ -508,7 +558,7 @@ function UsersContent() {
                                 ['Status', user.status],
                                 ['Verified', user.verified ? 'Yes' : 'No'],
                                 ['Products', user.products || 0],
-                                ['Revenue', user.revenue || '$0'],
+                                ['Revenue', user.revenue || '0'],
                                 ['Joined Date', user.joined],
                                 ['Liked', user.isLiked ? 'Yes' : 'No']
                               ],

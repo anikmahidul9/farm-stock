@@ -7,7 +7,8 @@ import { Features } from "../components/Feature";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Category } from "@/types";
+import { Category, Review } from "@/types";
+import { UserReviews } from "../components/UserReviews";
 
 async function getCategories() {
   const querySnapshot = await getDocs(collection(db, "categories"));
@@ -28,8 +29,52 @@ async function getCategories() {
   return categoriesData;
 }
 
+async function getReviews() {
+  const querySnapshot = await getDocs(collection(db, "reviews"));
+  if (querySnapshot.empty) {
+    return [
+      {
+        id: "1",
+        user: "Alice",
+        avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+        review:
+          "StockLot has revolutionized how I manage my farm's inventory. The real-time tracking and analytics are game-changers!",
+        role: "Dairy Farmer",
+      },
+      {
+        id: "2",
+        user: "John",
+        avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+        review:
+          "The marketplace is fantastic. I've been able to connect with local buyers and get the best prices for my livestock.",
+        role: "Cattle Rancher",
+      },
+      {
+        id: "3",
+        user: "Mary",
+        avatar: "https://randomuser.me/api/portraits/women/3.jpg",
+        review:
+          "As a small-scale poultry farmer, StockLot has given me access to a wider market. The app is user-friendly and very intuitive.",
+        role: "Poultry Farmer",
+      },
+    ];
+  }
+  const reviewsData = querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      user: data.user,
+      avatar: data.avatar,
+      review: data.review,
+      role: data.role,
+    } as Review;
+  });
+  return reviewsData;
+}
+
 export default async function Home() {
   const categories = await getCategories();
+  const reviews = await getReviews();
 
   return (
     <main className="min-h-screen">
@@ -92,57 +137,7 @@ export default async function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="relative z-0 bg-gray-50 py-16">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <h2 className="text-3xl font-bold text-gray-900 text-center">
-            What Our Users Say
-          </h2>
-          <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {/* Testimonial Card 1 */}
-            <div className="rounded-lg border bg-white p-6">
-              <p className="text-gray-600">
-                "StockLot is the best platform to sell livestock. I sold my
-                cattle in just a few days."
-              </p>
-              <div className="mt-4 flex items-center">
-                <div className="h-12 w-12 rounded-full bg-gray-200"></div>
-                <div className="ml-4">
-                  <p className="font-bold text-gray-900">John Doe</p>
-                  <p className="text-gray-600">Farmer</p>
-                </div>
-              </div>
-            </div>
-            {/* Testimonial Card 2 */}
-            <div className="rounded-lg border bg-white p-6">
-              <p className="text-gray-600">
-                "I found the perfect sheep for my farm on StockLot. The process
-                was smooth and easy."
-              </p>
-              <div className="mt-4 flex items-center">
-                <div className="h-12 w-12 rounded-full bg-gray-200"></div>
-                <div className="ml-4">
-                  <p className="font-bold text-gray-900">Jane Smith</p>
-                  <p className="text-gray-600">Farmer</p>
-                </div>
-              </div>
-            </div>
-            {/* Testimonial Card 3 */}
-            <div className="rounded-lg border bg-white p-6">
-              <p className="text-gray-600">
-                "A great platform for both buyers and sellers. Highly
-                recommended!"
-              </p>
-              <div className="mt-4 flex items-center">
-                <div className="h-12 w-12 rounded-full bg-gray-200"></div>
-                <div className="ml-4">
-                  <p className="font-bold text-gray-900">Mike Johnson</p>
-                  <p className="text-gray-600">Trader</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* <UserReviews reviews={reviews} /> */}
 
       {/* Call to Action Section */}
       <section className="relative z-0 bg-emerald-600 py-20 text-white">

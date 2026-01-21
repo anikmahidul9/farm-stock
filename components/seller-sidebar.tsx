@@ -25,11 +25,11 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 const navigation = [
-  // {
-  //   title: "Home",
-  //   url: "/", // Changed from "/seller" to "/"
-  //   icon: Home,
-  // },
+  {
+    title: "Home",
+    url: "/", // Changed from "/seller" to "/"
+    icon: Home,
+  },
   {
     title: "Overview",
     url: "/seller",

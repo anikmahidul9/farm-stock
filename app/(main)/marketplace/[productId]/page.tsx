@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, collection, addDoc, serverTimestamp, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp, getDocs, setDoc, updateDoc, query, where, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import { MapPin, Star, ShoppingCart, MessageCircle, ChevronLeft } from "lucide-react";
+import { MapPin, Star, ShoppingCart, MessageCircle, ChevronLeft, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { useToast } from "@/components/ui/use-toast";
@@ -46,9 +46,13 @@ type Product = {
   stock: number;
 };
 
-
-
-
+type Review = {
+  id: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: any;
+};
 
 export default function ProductDetailPage() {
   const { productId } = useParams();
@@ -64,6 +68,103 @@ export default function ProductDetailPage() {
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [checkingPurchase, setCheckingPurchase] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!productId) return;
+      try {
+        const q = query(
+          collection(db, "reviews"),
+          where("productId", "==", productId),
+          orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+        setReviews(fetchedReviews);
+      } catch (error) {
+        console.error("Error fetching reviews: ", error);
+      }
+    };
+
+    fetchReviews();
+  }, [productId]);
+
+  useEffect(() => {
+    const checkPurchase = async () => {
+      if (!user || !product) return;
+      
+      setCheckingPurchase(true);
+      try {
+        console.log("Checking purchase for user:", user.uid, "product:", product.id);
+        
+        // Query orders where user is buyer and status is delivered
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("buyerId", "==", user.uid),
+          where("status", "in", ["delivered", "paid"]) // Check both delivered and paid orders
+        );
+        const ordersSnapshot = await getDocs(ordersQuery);
+        
+        console.log("Found orders:", ordersSnapshot.size);
+        
+        let found = false;
+        
+        for (const orderDoc of ordersSnapshot.docs) {
+          const orderData = orderDoc.data();
+          console.log("Checking order:", orderData.tran_id, "orderType:", orderData.orderType);
+          
+          if (orderData.orderType === "cart_checkout" && orderData.cartItems) {
+            // Check cart items
+            console.log("Cart items:", orderData.cartItems);
+            const hasItem = orderData.cartItems.some((item: any) => item.productId === product.id);
+            if (hasItem) {
+              console.log("Found product in cart order!");
+              found = true;
+              break;
+            }
+          } else if (orderData.orderType === "single_offer" && orderData.offerInfo) {
+            // Check single offers by looking at the buy request
+            console.log("Checking single offer with product:", product);
+            // For single offers, we need to check if the product belongs to the seller
+            // and if it's related to this order. This is more complex.
+            // For now, we'll check if the seller matches and it's a delivered order
+            if (orderData.sellerId === product.sellerId && orderData.status === "delivered") {
+              console.log("Found matching delivered single offer!");
+              found = true;
+              break;
+            }
+          } else {
+            // Fallback for older orders structure
+            if (orderData.items && Array.isArray(orderData.items)) {
+              const hasItem = orderData.items.some((item: any) => item.productId === product.id);
+              if (hasItem) {
+                console.log("Found product in old order structure!");
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+        
+        console.log("Purchase check result:", found);
+        setHasPurchased(found);
+        
+      } catch (error) {
+        console.error("Error checking purchase history: ", error);
+      } finally {
+        setCheckingPurchase(false);
+      }
+    };
+
+    if (product && user) {
+      checkPurchase();
+    } else {
+      setCheckingPurchase(false);
+    }
+  }, [user, product]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -98,15 +199,15 @@ export default function ProductDetailPage() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("Fetched product imageUrls:", data.imageUrls); // Add this line
+          console.log("Fetched product imageUrls:", data.imageUrls);
           setProduct({
             id: docSnap.id,
-            title: data.name, // Assuming 'name' from Firestore is 'title' for display
+            title: data.name,
             price: data.price,
             location: data.location,
             sellerId: data.sellerId,
             sellerName: data.sellerName,
-            imageUrls: data.imageUrls,
+            imageUrls: data.imageUrls || [],
             category: data.category,
             categoryName: categoryMap.get(data.category) || "Unknown",
             unit: data.unit,
@@ -141,6 +242,14 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [productId, router, toast, categoryMap, unitMap]);
 
+  // Check if user has already reviewed this product
+  const hasUserReviewed = reviews.some(review => {
+    // Check if we have user info to compare
+    if (!userData) return false;
+    const reviewerName = `${userData.firstName} ${userData.lastName}`.trim();
+    return review.userName === reviewerName;
+  });
+
   const handleReviewSubmit = async () => {
     if (!user || !product) {
       toast({
@@ -149,6 +258,24 @@ export default function ProductDetailPage() {
         variant: "destructive",
       });
       router.push("/signin");
+      return;
+    }
+
+    if (!hasPurchased) {
+      toast({
+        title: "Purchase Required",
+        description: "You must purchase this product before leaving a review.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hasUserReviewed) {
+      toast({
+        title: "Already Reviewed",
+        description: "You have already submitted a review for this product.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -161,16 +288,52 @@ export default function ProductDetailPage() {
       return;
     }
 
+    if (!reviewText.trim()) {
+      toast({
+        title: "Review Required",
+        description: "Please write a review comment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmittingReview(true);
     try {
-      await addDoc(collection(db, "reviews"), {
+      const userName = userData?.firstName && userData?.lastName 
+        ? `${userData.firstName} ${userData.lastName}`
+        : userData?.firstName || userData?.email?.split('@')[0] || "Anonymous";
+
+      const newReviewRef = await addDoc(collection(db, "reviews"), {
         productId: product.id,
         userId: user.uid,
-        userName: userData?.firstName + " " + userData?.lastName || "Anonymous",
+        userName: userName,
         rating: reviewRating,
-        comment: reviewText,
+        comment: reviewText.trim(),
         createdAt: serverTimestamp(),
       });
+
+      // Update the product's average rating
+      const reviewsQuery = query(collection(db, "reviews"), where("productId", "==", product.id));
+      const reviewsSnapshot = await getDocs(reviewsQuery);
+      const totalReviews = reviewsSnapshot.size;
+      const totalRating = reviewsSnapshot.docs.reduce((acc, doc) => acc + doc.data().rating, 0);
+      const newAverageRating = totalReviews > 0 ? totalRating / totalReviews : 0;
+
+      const productRef = doc(db, "products", product.id);
+      await updateDoc(productRef, {
+        rating: newAverageRating,
+        reviews: totalReviews,
+      });
+
+      // Update local state
+      setReviews(prev => [...prev, { 
+        id: newReviewRef.id, 
+        userName: userName, 
+        rating: reviewRating, 
+        comment: reviewText.trim(), 
+        createdAt: new Date() 
+      }]);
+      setProduct(prev => prev ? { ...prev, rating: newAverageRating, reviews: totalReviews } : null);
 
       toast({
         title: "Review Submitted!",
@@ -179,7 +342,6 @@ export default function ProductDetailPage() {
       setIsReviewDialogOpen(false);
       setReviewText("");
       setReviewRating(0);
-      // Optionally, re-fetch product to update average rating/reviews
     } catch (error) {
       console.error("Error submitting review: ", error);
       toast({
@@ -257,7 +419,7 @@ export default function ProductDetailPage() {
             variant: "destructive",
         });
     }
-};
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-BD', {
@@ -393,75 +555,179 @@ export default function ProductDetailPage() {
                 <CardContent className="text-muted-foreground text-sm space-y-1">
                   <p><strong>Seller:</strong> {product.sellerName}</p>
                   <p><strong>Location:</strong> {product.location}</p>
-                  {/* Add seller rating/contact info here */}
                 </CardContent>
               </Card>
             </div>
 
             <div className="flex gap-4">
-              <Button size="lg" className="flex-1 gap-2" onClick={handleAddToCart}>
-                <ShoppingCart className="h-5 w-5" />
-                Add to Cart
-              </Button>
-              <Button size="lg" variant="outline" className="flex-1 gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Contact Seller
-              </Button>
+              {userData?.role !== 'seller' && (
+                <Button size="lg" className="flex-1 gap-2" onClick={handleAddToCart}>
+                  <ShoppingCart className="h-5 w-5" />
+                  Add to Cart
+                </Button>
+              )}
+              {user?.uid !== product.sellerId && (
+                <Button size="lg" variant="outline" className="flex-1 gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Contact Seller
+                </Button>
+              )}
             </div>
 
             {/* Review Section */}
             <Card className="border-none shadow-sm">
               <CardHeader>
-                <CardTitle>Customer Reviews</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Customer Reviews</CardTitle>
+                  {checkingPurchase ? (
+                    <span className="text-sm text-muted-foreground">Checking purchase...</span>
+                  ) : hasPurchased && !hasUserReviewed && userData?.role === 'buyer' ? (
+                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Eligible to Review
+                    </Badge>
+                  ) : null}
+                </div>
               </CardHeader>
               <CardContent>
-                <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">Leave a Review</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Submit Your Review</DialogTitle>
-                      <DialogDescription>Share your experience with this product.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <Label htmlFor="rating">Rating</Label>
-                        <div className="flex gap-1 mt-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`h-6 w-6 cursor-pointer ${
-                                star <= reviewRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-                              }`}
-                              onClick={() => setReviewRating(star)}
-                            />
-                          ))}
+                {/* Review Submission */}
+                {userData?.role === 'buyer' && hasPurchased && !hasUserReviewed && !checkingPurchase && (
+                  <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full mb-6 gap-2">
+                        <Star className="h-4 w-4" />
+                        Write a Review
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Submit Your Review</DialogTitle>
+                        <DialogDescription>Share your experience with {product.title}</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <Label htmlFor="rating">Rating *</Label>
+                          <div className="flex gap-1 mt-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setReviewRating(star)}
+                                className="p-1"
+                              >
+                                <Star
+                                  className={`h-8 w-8 cursor-pointer transition-all ${
+                                    star <= reviewRating 
+                                      ? "fill-yellow-400 text-yellow-400 scale-110" 
+                                      : "text-muted-foreground hover:text-yellow-300"
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {reviewRating === 0 ? "Select a rating" : 
+                             reviewRating === 1 ? "Poor" :
+                             reviewRating === 2 ? "Fair" :
+                             reviewRating === 3 ? "Good" :
+                             reviewRating === 4 ? "Very Good" : "Excellent"}
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="comment">Review *</Label>
+                          <Textarea
+                            id="comment"
+                            placeholder="Share your experience with this product..."
+                            value={reviewText}
+                            onChange={(e) => setReviewText(e.target.value)}
+                            rows={4}
+                            className="mt-1"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Minimum 10 characters required
+                          </p>
                         </div>
                       </div>
-                      <div>
-                        <Label htmlFor="comment">Comment</Label>
-                        <Textarea
-                          id="comment"
-                          placeholder="Write your review here..."
-                          value={reviewText}
-                          onChange={(e) => setReviewText(e.target.value)}
-                          rows={4}
-                        />
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleReviewSubmit} 
+                          disabled={isSubmittingReview || reviewRating === 0 || reviewText.trim().length < 10}
+                        >
+                          {isSubmittingReview && <Spinner className="mr-2 h-4 w-4" />}
+                          Submit Review
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                {userData?.role === 'buyer' && !hasPurchased && !checkingPurchase && (
+                  <div className="mb-6 p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Purchase this product to leave a review.
+                    </p>
+                  </div>
+                )}
+
+                {hasUserReviewed && (
+                  <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <p className="text-sm text-emerald-700">
+                      You have already submitted a review for this product.
+                    </p>
+                  </div>
+                )}
+
+                {/* Display existing reviews */}
+                <div className="mt-6 space-y-6">
+                  {reviews.length > 0 ? (
+                    reviews.map((review) => (
+                      <div key={review.id} className="flex gap-4">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                            {review.userName.charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold">{review.userName}</p>
+                              {userData && review.userName === `${userData.firstName} ${userData.lastName}`?.trim() && (
+                                <Badge variant="outline" className="text-xs">
+                                  You
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < review.rating 
+                                      ? "text-yellow-400 fill-yellow-400" 
+                                      : "text-muted-foreground"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {review.createdAt?.toDate 
+                              ? format(review.createdAt.toDate(), 'MMM dd, yyyy')
+                              : new Date(review.createdAt).toLocaleDateString()}
+                          </p>
+                          <p className="mt-2 text-foreground">{review.comment}</p>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="mt-4 text-center py-8 text-muted-foreground">
+                      <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No reviews yet. Be the first to review this product!</p>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>Cancel</Button>
-                      <Button onClick={handleReviewSubmit} disabled={isSubmittingReview}>
-                        {isSubmittingReview && <Spinner className="mr-2 h-4 w-4" />}
-                        Submit Review
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                {/* Display existing reviews here */}
-                <div className="mt-4 text-muted-foreground">
-                  No reviews yet. Be the first to review this product!
+                  )}
                 </div>
               </CardContent>
             </Card>

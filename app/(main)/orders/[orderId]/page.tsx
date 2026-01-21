@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, onSnapshot, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { Package, Check, User, ShoppingCart, Banknote, Truck, CreditCard, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Package, Check, User, ShoppingCart, Banknote, Truck, CreditCard, AlertCircle, ShoppingBag, Download, ArrowLeft } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import jsPDF from 'jspdf';
 
 type Order = {
     id: string;
@@ -63,25 +64,40 @@ const statusMap = {
 };
 
 export default function OrderTrackingPage() {
-    const { orderId } = useParams();
+    const params = useParams();
+    const router = useRouter();
+    const orderId = Array.isArray(params?.orderId) ? params.orderId[0] : params?.orderId;
     const { user } = useAuth();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
     useEffect(() => {
-        if (!orderId) return;
-
-        const orderRef = doc(db, 'orders', orderId as string);
-        const unsubscribe = onSnapshot(orderRef, (doc) => {
-            if (doc.exists()) {
-                setOrder({ id: doc.id, ...doc.data() } as Order);
-            } else {
-                console.error("No such order!");
-                setOrder(null);
-            }
+        if (!orderId) {
+            console.error("No order ID found in URL");
             setLoading(false);
-        });
+            return;
+        }
+
+        const orderRef = doc(db, 'orders', orderId);
+        const unsubscribe = onSnapshot(orderRef, 
+            (doc) => {
+                if (doc.exists()) {
+                    console.log("Order data:", doc.data());
+                    setOrder({ id: doc.id, ...doc.data() } as Order);
+                } else {
+                    console.error("No such order!");
+                    setOrder(null);
+                }
+                setLoading(false);
+            },
+            (error) => {
+                console.error("Error fetching order:", error);
+                toast.error("Failed to load order details");
+                setLoading(false);
+            }
+        );
 
         return () => unsubscribe();
     }, [orderId]);
@@ -92,7 +108,6 @@ export default function OrderTrackingPage() {
             return;
         }
         
-        // Check if user is seller or buyer (seller can update shipping/delivery, buyer can request cancellation)
         const isSeller = user.uid === order.sellerId || (order.sellerIds && order.sellerIds.includes(user.uid));
         const isBuyer = user.uid === order.buyerId;
         
@@ -101,13 +116,11 @@ export default function OrderTrackingPage() {
             return;
         }
         
-        // Buyers can only cancel pending orders
         if (isBuyer && newStatus === 'cancelled' && order.status !== 'pending') {
             toast.error("Only pending orders can be cancelled by buyers.");
             return;
         }
         
-        // Sellers can update to shipped/delivered
         if (isSeller && !['shipped', 'delivered', 'cancelled'].includes(newStatus)) {
             toast.error("Sellers can only update to shipped, delivered, or cancelled.");
             return;
@@ -147,14 +160,16 @@ export default function OrderTrackingPage() {
             currency: 'BDT',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
-        }).format(amount).replace('BDT', 'Tk');
+        }).format(amount).replace('BDT', '৳');
     };
 
     const getOrderTitle = () => {
-        if (order?.orderType === 'cart_checkout') {
+        if (!order) return "Order";
+        
+        if (order.orderType === 'cart_checkout') {
             const itemCount = order.cartItems?.length || 0;
             return `Cart Order (${itemCount} item${itemCount !== 1 ? 's' : ''})`;
-        } else if (order?.offerInfo?.buyRequestTitle) {
+        } else if (order.offerInfo?.buyRequestTitle) {
             return order.offerInfo.buyRequestTitle;
         } else {
             return "Order";
@@ -162,7 +177,9 @@ export default function OrderTrackingPage() {
     };
 
     const getSellerInfo = () => {
-        if (order?.orderType === 'cart_checkout') {
+        if (!order) return "Seller";
+        
+        if (order.orderType === 'cart_checkout') {
             const sellerCount = order.sellerIds?.length || 0;
             if (sellerCount > 1) {
                 return `${sellerCount} sellers`;
@@ -181,17 +198,213 @@ export default function OrderTrackingPage() {
     };
 
     const getDisplayAmount = () => {
-        if (order?.totalAmount) return order.totalAmount;
-        if (order?.amount) return order.amount;
+        if (!order) return 0;
+        
+        if (order.totalAmount) return order.totalAmount;
+        if (order.amount) return order.amount;
         return 0;
+    };
+
+    const generatePDFReceipt = async () => {
+        if (!order) return;
+        
+        setIsGeneratingPDF(true);
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            let yPos = 20;
+
+            // Header
+            pdf.setFontSize(24);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text("Livestock Marketplace", pageWidth / 2, yPos, { align: 'center' });
+            
+            pdf.setFontSize(14);
+            pdf.setTextColor(107, 114, 128);
+            pdf.text("Farm-to-Table Order Receipt", pageWidth / 2, yPos + 8, { align: 'center' });
+            
+            yPos += 25;
+
+            // Order Info
+            pdf.setFontSize(12);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Order ID: ${order.tran_id}`, 20, yPos);
+            pdf.text(`Date: ${order.createdAt ? format(order.createdAt.toDate(), 'PPP') : 'N/A'}`, pageWidth - 70, yPos);
+            yPos += 7;
+            pdf.text(`Status: ${statusMap[order.status]?.text || order.status}`, 20, yPos);
+            yPos += 10;
+
+            // Customer Info
+            pdf.setFontSize(14);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text("Customer Information", 20, yPos);
+            yPos += 7;
+            
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(order.buyerInfo.name, 20, yPos);
+            yPos += 5;
+            pdf.text(order.buyerInfo.email, 20, yPos);
+            yPos += 5;
+            if (order.buyerInfo.phone) {
+                pdf.text(`Phone: ${order.buyerInfo.phone}`, 20, yPos);
+                yPos += 5;
+            }
+            if (order.buyerInfo.address) {
+                pdf.text(`Address: ${order.buyerInfo.address}`, 20, yPos);
+                yPos += 5;
+            }
+            yPos += 5;
+
+            // Order Type & Items
+            pdf.setFontSize(14);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text("Order Details", 20, yPos);
+            yPos += 10;
+
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            
+            if (order.orderType === 'cart_checkout' && order.cartItems && order.cartItems.length > 0) {
+                // Table Header
+                pdf.setFillColor(209, 250, 229);
+                pdf.rect(20, yPos - 5, pageWidth - 40, 10, 'F');
+                pdf.text("Product", 25, yPos);
+                pdf.text("Qty", 120, yPos);
+                pdf.text("Price", 150, yPos);
+                pdf.text("Subtotal", pageWidth - 40, yPos, { align: 'right' });
+                yPos += 7;
+
+                // Cart Items
+                order.cartItems.forEach((item) => {
+                    pdf.text(item.productName, 25, yPos);
+                    pdf.text(item.quantity.toString(), 120, yPos);
+                    pdf.text(formatCurrency(item.price), 150, yPos);
+                    pdf.text(formatCurrency(item.subtotal), pageWidth - 40, yPos, { align: 'right' });
+                    yPos += 6;
+                    
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text(`Seller: ${item.sellerName}`, 30, yPos);
+                    yPos += 4;
+                    pdf.setFontSize(11);
+                    pdf.setTextColor(0, 0, 0);
+                });
+            } else if (order.offerInfo) {
+                pdf.text("Product: " + order.offerInfo.buyRequestTitle, 25, yPos);
+                yPos += 6;
+                pdf.text("Seller: " + order.offerInfo.sellerName, 25, yPos);
+                yPos += 6;
+                pdf.text("Price: " + formatCurrency(order.offerInfo.price), 25, yPos);
+                yPos += 6;
+            }
+
+            yPos += 10;
+
+            // Payment Summary
+            pdf.setFontSize(14);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text("Payment Summary", 20, yPos);
+            yPos += 10;
+
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            
+            if (order.subtotal) {
+                pdf.text("Subtotal:", 120, yPos);
+                pdf.text(formatCurrency(order.subtotal), pageWidth - 40, yPos, { align: 'right' });
+                yPos += 6;
+            }
+            
+            if (order.shippingCost) {
+                pdf.text("Shipping:", 120, yPos);
+                pdf.text(formatCurrency(order.shippingCost), pageWidth - 40, yPos, { align: 'right' });
+                yPos += 6;
+            }
+            
+            if (order.taxAmount) {
+                pdf.text("Tax:", 120, yPos);
+                pdf.text(formatCurrency(order.taxAmount), pageWidth - 40, yPos, { align: 'right' });
+                yPos += 6;
+            }
+            
+            yPos += 4;
+            pdf.setDrawColor(16, 185, 129);
+            pdf.line(120, yPos, pageWidth - 40, yPos);
+            yPos += 6;
+            
+            pdf.setFontSize(12);
+            pdf.setFont(undefined, 'bold');
+            pdf.text("Total Amount:", 120, yPos);
+            pdf.text(formatCurrency(getDisplayAmount()), pageWidth - 40, yPos, { align: 'right' });
+            yPos += 15;
+
+            // Order Status Timeline
+            pdf.setFontSize(14);
+            pdf.setTextColor(16, 185, 129);
+            pdf.text("Order Status", 20, yPos);
+            yPos += 10;
+
+            const statuses = ['paid', 'shipped', 'delivered'];
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            
+            statuses.forEach((statusKey, index) => {
+                const status = statusKey as keyof typeof statusMap;
+                const isCompleted = 
+                    status === 'paid' && ['paid', 'shipped', 'delivered'].includes(order.status) ||
+                    status === 'shipped' && ['shipped', 'delivered'].includes(order.status) ||
+                    status === 'delivered' && order.status === 'delivered';
+                
+                const xPos = 25;
+                const stepYPos = yPos + (index * 12);
+                
+                if (isCompleted) {
+                    pdf.setFillColor(16, 185, 129);
+                } else {
+                    pdf.setFillColor(209, 250, 229);
+                }
+                pdf.circle(xPos, stepYPos, 2, 'F');
+                
+                pdf.text(statusMap[status]?.text || status, xPos + 5, stepYPos);
+                
+                if (isCompleted && order.createdAt) {
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text(order.createdAt ? format(order.createdAt.toDate(), 'MMM d, yyyy') : '', xPos + 5, stepYPos + 4);
+                    pdf.setFontSize(11);
+                    pdf.setTextColor(0, 0, 0);
+                }
+            });
+
+            yPos += 40;
+
+            // Footer
+            pdf.setFontSize(9);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text("Thank you for shopping with Fresh Harvest Marketplace!", pageWidth / 2, yPos, { align: 'center' });
+            yPos += 4;
+            pdf.text("For any questions, contact support@freshharvest.com", pageWidth / 2, yPos, { align: 'center' });
+            yPos += 4;
+            pdf.text("This is an automated receipt. No signature required.", pageWidth / 2, yPos, { align: 'center' });
+
+            pdf.save(`Order_${order.tran_id}_Receipt.pdf`);
+
+            toast.success("Receipt downloaded successfully!");
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            toast.error("Failed to generate receipt. Please try again.");
+        } finally {
+            setIsGeneratingPDF(false);
+        }
     };
 
     if (loading) {
         return (
             <div className="container mx-auto px-4 py-8">
-                <div className="text-center py-10">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-4"></div>
-                    <p>Loading order details...</p>
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
+                    <p className="text-muted-foreground">Loading order details...</p>
                 </div>
             </div>
         );
@@ -205,9 +418,17 @@ export default function OrderTrackingPage() {
                         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
                         <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
                         <p className="text-muted-foreground mb-6">The order you're looking for doesn't exist or has been removed.</p>
-                        <Button asChild>
-                            <Link href="/buyer/orders">Back to My Orders</Link>
-                        </Button>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                            <Button asChild>
+                                <Link href="/buyer/orders">
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Back to My Orders
+                                </Link>
+                            </Button>
+                            <Button variant="outline" onClick={() => router.push('/')}>
+                                Go to Homepage
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -223,8 +444,29 @@ export default function OrderTrackingPage() {
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="mb-6">
-                <h1 className="text-3xl font-bold mb-2">Order Tracking</h1>
-                <p className="text-muted-foreground">Track your order status and details</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Order Tracking</h1>
+                        <p className="text-muted-foreground">Track your order status and details</p>
+                    </div>
+                    <Button
+                        onClick={generatePDFReceipt}
+                        disabled={isGeneratingPDF}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                        {isGeneratingPDF ? (
+                            <>
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Receipt
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
@@ -270,7 +512,7 @@ export default function OrderTrackingPage() {
                                 </div>
                             </div>
 
-                            {/* Cart Items (for cart checkout) */}
+                            {/* Cart Items */}
                             {order.orderType === 'cart_checkout' && order.cartItems && order.cartItems.length > 0 && (
                                 <div className="border-t pt-6">
                                     <h3 className="font-semibold mb-4">Order Items ({order.cartItems.length})</h3>
@@ -278,8 +520,8 @@ export default function OrderTrackingPage() {
                                         {order.cartItems.map((item, index) => (
                                             <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
-                                                        <ShoppingCart className="h-5 w-5 text-gray-500" />
+                                                    <div className="w-10 h-10 bg-emerald-100 rounded flex items-center justify-center">
+                                                        <ShoppingCart className="h-5 w-5 text-emerald-600" />
                                                     </div>
                                                     <div>
                                                         <p className="font-medium line-clamp-1">{item.productName}</p>
@@ -291,7 +533,7 @@ export default function OrderTrackingPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <p className="font-semibold">{formatCurrency(item.subtotal)}</p>
+                                                <p className="font-semibold text-emerald-600">{formatCurrency(item.subtotal)}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -391,7 +633,7 @@ export default function OrderTrackingPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Update Status (if authorized) */}
+                    {/* Update Status */}
                     {canUpdateStatus && (
                         <Card>
                             <CardHeader>
@@ -435,10 +677,17 @@ export default function OrderTrackingPage() {
                         </Card>
                     )}
 
-                    {/* Contact Button */}
-                    <Button asChild className="w-full" variant="outline">
-                        <Link href="/messages">Contact Support</Link>
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                        <Button asChild className="w-full" variant="outline">
+                            <Link href="/messages">Contact Support</Link>
+                        </Button>
+                        <Button asChild className="w-full" variant="ghost">
+                            <Link href="/buyer/orders">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Orders
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

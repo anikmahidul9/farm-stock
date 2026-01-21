@@ -208,41 +208,38 @@ export default function MarketplacePage() {
   useEffect(() => {
     if (categoryMap.size === 0 || unitMap.size === 0) return;
 
-    const fetchProducts = async () => {
-      setLoadingProducts(true);
-      try {
-        const querySnapshot = await getDocs(collection(db, "products"));
-        const productsData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            price: data.price,
-            location: data.location,
-            sellerId: data.sellerId,
-            sellerName: data.sellerName,
-            imageUrls: data.imageUrls || [],
-            category: data.category,
-            categoryName: categoryMap.get(data.category) || "Unknown",
-            unit: data.unit,
-            unitName: unitMap.get(data.unit) || "Unknown",
-            age: data.age || 0,
-            weight: data.weight || 0,
-            description: data.description || "",
-            rating: data.rating || 0,
-            reviews: data.reviews || 0,
-            isVerified: data.isVerified || false,
-          };
-        }) as Product[];
-        setProducts(productsData);
-      } catch (error) {
-        console.error("Error fetching products: ", error);
-      } finally {
-        setLoadingProducts(false);
-      }
-    };
+    setLoadingProducts(true);
+    const unsubscribe = onSnapshot(collection(db, "products"), (querySnapshot) => {
+      const productsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          price: data.price,
+          location: data.location,
+          sellerId: data.sellerId,
+          sellerName: data.sellerName,
+          imageUrls: data.imageUrls || [],
+          category: data.category,
+          categoryName: categoryMap.get(data.category) || "Unknown",
+          unit: data.unit,
+          unitName: unitMap.get(data.unit) || "Unknown",
+          age: data.age || 0,
+          weight: data.weight || 0,
+          description: data.description || "",
+          rating: data.rating || 0,
+          reviews: data.reviews || 0,
+          isVerified: data.isVerified || false,
+        };
+      }) as Product[];
+      setProducts(productsData);
+      setLoadingProducts(false);
+    }, (error) => {
+      console.error("Error fetching products: ", error);
+      setLoadingProducts(false);
+    });
 
-    fetchProducts();
+    return () => unsubscribe();
   }, [categoryMap, unitMap]);
 
   const parsePriceRange = (range: string) => {

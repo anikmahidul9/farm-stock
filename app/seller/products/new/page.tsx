@@ -142,6 +142,8 @@ export default function NewProduct() {
         imageUrls: uploadedImageUrls,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        rating: 0,
+        reviews: 0,
       };
 
       // Filter out undefined values
