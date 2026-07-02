@@ -1,15 +1,35 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, collection, addDoc, serverTimestamp, getDocs, setDoc, updateDoc, query, where, orderBy } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import { MapPin, Star, ShoppingCart, MessageCircle, ChevronLeft, CheckCircle } from "lucide-react";
+import {
+  MapPin,
+  Star,
+  ShoppingCart,
+  MessageCircle,
+  ChevronLeft,
+  CheckCircle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -62,7 +82,9 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [categoryMap, setCategoryMap] = useState<Map<string, string>>(new Map());
+  const [categoryMap, setCategoryMap] = useState<Map<string, string>>(
+    new Map(),
+  );
   const [unitMap, setUnitMap] = useState<Map<string, string>>(new Map());
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   const [reviewText, setReviewText] = useState("");
@@ -79,10 +101,12 @@ export default function ProductDetailPage() {
         const q = query(
           collection(db, "reviews"),
           where("productId", "==", productId),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
         );
         const querySnapshot = await getDocs(q);
-        const fetchedReviews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+        const fetchedReviews = querySnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as Review,
+        );
         setReviews(fetchedReviews);
       } catch (error) {
         console.error("Error fetching reviews: ", error);
@@ -95,43 +119,61 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const checkPurchase = async () => {
       if (!user || !product) return;
-      
+
       setCheckingPurchase(true);
       try {
-        console.log("Checking purchase for user:", user.uid, "product:", product.id);
-        
+        console.log(
+          "Checking purchase for user:",
+          user.uid,
+          "product:",
+          product.id,
+        );
+
         // Query orders where user is buyer and status is delivered
         const ordersQuery = query(
           collection(db, "orders"),
           where("buyerId", "==", user.uid),
-          where("status", "in", ["delivered", "paid"]) // Check both delivered and paid orders
+          where("status", "in", ["delivered", "paid"]), // Check both delivered and paid orders
         );
         const ordersSnapshot = await getDocs(ordersQuery);
-        
+
         console.log("Found orders:", ordersSnapshot.size);
-        
+
         let found = false;
-        
+
         for (const orderDoc of ordersSnapshot.docs) {
           const orderData = orderDoc.data();
-          console.log("Checking order:", orderData.tran_id, "orderType:", orderData.orderType);
-          
+          console.log(
+            "Checking order:",
+            orderData.tran_id,
+            "orderType:",
+            orderData.orderType,
+          );
+
           if (orderData.orderType === "cart_checkout" && orderData.cartItems) {
             // Check cart items
             console.log("Cart items:", orderData.cartItems);
-            const hasItem = orderData.cartItems.some((item: any) => item.productId === product.id);
+            const hasItem = orderData.cartItems.some(
+              (item: any) => item.productId === product.id,
+            );
             if (hasItem) {
               console.log("Found product in cart order!");
               found = true;
               break;
             }
-          } else if (orderData.orderType === "single_offer" && orderData.offerInfo) {
+          } else if (
+            orderData.orderType === "single_offer" &&
+            orderData.offerInfo
+          ) {
             // Check single offers by looking at the buy request
             console.log("Checking single offer with product:", product);
             // For single offers, we need to check if the product belongs to the seller
             // and if it's related to this order. This is more complex.
             // For now, we'll check if the seller matches and it's a delivered order
-            if (orderData.sellerId === product.sellerId && orderData.status === "delivered") {
+            if (
+              orderData.sellerId === product.sellerId &&
+              orderData.status === "delivered"
+            ) {
               console.log("Found matching delivered single offer!");
               found = true;
               break;
@@ -139,7 +181,9 @@ export default function ProductDetailPage() {
           } else {
             // Fallback for older orders structure
             if (orderData.items && Array.isArray(orderData.items)) {
-              const hasItem = orderData.items.some((item: any) => item.productId === product.id);
+              const hasItem = orderData.items.some(
+                (item: any) => item.productId === product.id,
+              );
               if (hasItem) {
                 console.log("Found product in old order structure!");
                 found = true;
@@ -148,10 +192,9 @@ export default function ProductDetailPage() {
             }
           }
         }
-        
+
         console.log("Purchase check result:", found);
         setHasPurchased(found);
-        
       } catch (error) {
         console.error("Error checking purchase history: ", error);
       } finally {
@@ -172,15 +215,16 @@ export default function ProductDetailPage() {
         // Fetch Categories
         const categoriesSnapshot = await getDocs(collection(db, "categories"));
         const catMap = new Map<string, string>();
-        categoriesSnapshot.docs.forEach(doc => catMap.set(doc.id, doc.data().name));
+        categoriesSnapshot.docs.forEach((doc) =>
+          catMap.set(doc.id, doc.data().name),
+        );
         setCategoryMap(catMap);
 
         // Fetch Units
         const unitsSnapshot = await getDocs(collection(db, "units"));
         const uMap = new Map<string, string>();
-        unitsSnapshot.docs.forEach(doc => uMap.set(doc.id, doc.data().name));
+        unitsSnapshot.docs.forEach((doc) => uMap.set(doc.id, doc.data().name));
         setUnitMap(uMap);
-
       } catch (error) {
         console.error("Error fetching initial data: ", error);
       }
@@ -243,7 +287,7 @@ export default function ProductDetailPage() {
   }, [productId, router, toast, categoryMap, unitMap]);
 
   // Check if user has already reviewed this product
-  const hasUserReviewed = reviews.some(review => {
+  const hasUserReviewed = reviews.some((review) => {
     // Check if we have user info to compare
     if (!userData) return false;
     const reviewerName = `${userData.firstName} ${userData.lastName}`.trim();
@@ -299,9 +343,12 @@ export default function ProductDetailPage() {
 
     setIsSubmittingReview(true);
     try {
-      const userName = userData?.firstName && userData?.lastName 
-        ? `${userData.firstName} ${userData.lastName}`
-        : userData?.firstName || userData?.email?.split('@')[0] || "Anonymous";
+      const userName =
+        userData?.firstName && userData?.lastName
+          ? `${userData.firstName} ${userData.lastName}`
+          : userData?.firstName ||
+            userData?.email?.split("@")[0] ||
+            "Anonymous";
 
       const newReviewRef = await addDoc(collection(db, "reviews"), {
         productId: product.id,
@@ -313,11 +360,18 @@ export default function ProductDetailPage() {
       });
 
       // Update the product's average rating
-      const reviewsQuery = query(collection(db, "reviews"), where("productId", "==", product.id));
+      const reviewsQuery = query(
+        collection(db, "reviews"),
+        where("productId", "==", product.id),
+      );
       const reviewsSnapshot = await getDocs(reviewsQuery);
       const totalReviews = reviewsSnapshot.size;
-      const totalRating = reviewsSnapshot.docs.reduce((acc, doc) => acc + doc.data().rating, 0);
-      const newAverageRating = totalReviews > 0 ? totalRating / totalReviews : 0;
+      const totalRating = reviewsSnapshot.docs.reduce(
+        (acc, doc) => acc + doc.data().rating,
+        0,
+      );
+      const newAverageRating =
+        totalReviews > 0 ? totalRating / totalReviews : 0;
 
       const productRef = doc(db, "products", product.id);
       await updateDoc(productRef, {
@@ -326,14 +380,21 @@ export default function ProductDetailPage() {
       });
 
       // Update local state
-      setReviews(prev => [...prev, { 
-        id: newReviewRef.id, 
-        userName: userName, 
-        rating: reviewRating, 
-        comment: reviewText.trim(), 
-        createdAt: new Date() 
-      }]);
-      setProduct(prev => prev ? { ...prev, rating: newAverageRating, reviews: totalReviews } : null);
+      setReviews((prev) => [
+        ...prev,
+        {
+          id: newReviewRef.id,
+          userName: userName,
+          rating: reviewRating,
+          comment: reviewText.trim(),
+          createdAt: new Date(),
+        },
+      ]);
+      setProduct((prev) =>
+        prev
+          ? { ...prev, rating: newAverageRating, reviews: totalReviews }
+          : null,
+      );
 
       toast({
         title: "Review Submitted!",
@@ -356,78 +417,80 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     if (!user || !product) {
-        toast({
-            title: "Authentication Required",
-            description: "Please log in to add items to your cart.",
-            variant: "destructive",
-        });
-        router.push("/signin");
-        return;
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to add items to your cart.",
+        variant: "destructive",
+      });
+      router.push("/signin");
+      return;
     }
 
     if (product.stock <= 0) {
-        toast({
-            title: "Out of Stock",
-            description: "This product is currently out of stock.",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Out of Stock",
+        description: "This product is currently out of stock.",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-        const cartItemRef = doc(db, `users/${user.uid}/cart`, product.id);
-        const cartItemSnap = await getDoc(cartItemRef);
+      const cartItemRef = doc(db, `users/${user.uid}/cart`, product.id);
+      const cartItemSnap = await getDoc(cartItemRef);
 
-        let newQuantity = 1;
-        if (cartItemSnap.exists()) {
-            const existingItem = cartItemSnap.data();
-            newQuantity = existingItem.quantity + 1;
-            if (newQuantity > product.stock) {
-                toast({
-                    title: "Not Enough Stock",
-                    description: `You can only add ${product.stock} of this item to your cart.`,
-                    variant: "destructive",
-                });
-                return;
-            }
-            await updateDoc(cartItemRef, {
-                quantity: newQuantity,
-                addedAt: serverTimestamp(),
-            });
-        } else {
-            await setDoc(cartItemRef, {
-                productId: product.id,
-                productName: product.title,
-                productImage: product.imageUrls[0] || '',
-                price: product.price,
-                quantity: newQuantity,
-                sellerId: product.sellerId,
-                sellerName: product.sellerName,
-                addedAt: serverTimestamp(),
-            });
-        }
-
-        toast({
-            title: "Added to Cart",
-            description: `${product.title} (${newQuantity}x) added to your cart.`,
-        });
-    } catch (error) {
-        console.error("Error adding to cart: ", error);
-        toast({
-            title: "Error",
-            description: "Failed to add item to cart. Please try again.",
+      let newQuantity = 1;
+      if (cartItemSnap.exists()) {
+        const existingItem = cartItemSnap.data();
+        newQuantity = existingItem.quantity + 1;
+        if (newQuantity > product.stock) {
+          toast({
+            title: "Not Enough Stock",
+            description: `You can only add ${product.stock} of this item to your cart.`,
             variant: "destructive",
+          });
+          return;
+        }
+        await updateDoc(cartItemRef, {
+          quantity: newQuantity,
+          addedAt: serverTimestamp(),
         });
+      } else {
+        await setDoc(cartItemRef, {
+          productId: product.id,
+          productName: product.title,
+          productImage: product.imageUrls[0] || "",
+          price: product.price,
+          quantity: newQuantity,
+          sellerId: product.sellerId,
+          sellerName: product.sellerName,
+          addedAt: serverTimestamp(),
+        });
+      }
+
+      toast({
+        title: "Added to Cart",
+        description: `${product.title} (${newQuantity}x) added to your cart.`,
+      });
+    } catch (error) {
+      console.error("Error adding to cart: ", error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-BD', {
-      style: 'currency',
-      currency: 'BDT',
+    return new Intl.NumberFormat("en-BD", {
+      style: "currency",
+      currency: "BDT",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(amount).replace('BDT', 'Tk');
+    })
+      .format(amount)
+      .replace("BDT", "Tk");
   };
 
   if (loading) {
@@ -508,19 +571,24 @@ export default function ProductDetailPage() {
 
           {/* Product Details */}
           <div className="space-y-6">
-            <h1 className="text-4xl font-bold text-foreground">{product.title}</h1>
+            <h1 className="text-4xl font-bold text-foreground">
+              {product.title}
+            </h1>
             <div className="flex items-center gap-4 text-muted-foreground">
               <Badge variant="outline">{product.categoryName}</Badge>
               <div className="flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
                 <span>{product.location}</span>
               </div>
-              {product.rating !== undefined && product.reviews !== undefined && (
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>{product.rating.toFixed(1)} ({product.reviews} reviews)</span>
-                </div>
-              )}
+              {product.rating !== undefined &&
+                product.reviews !== undefined && (
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span>
+                      {product.rating.toFixed(1)} ({product.reviews} reviews)
+                    </span>
+                  </div>
+                )}
             </div>
 
             <p className="text-5xl font-bold text-emerald-600">
@@ -542,10 +610,18 @@ export default function ProductDetailPage() {
                   <CardTitle className="text-lg">Details</CardTitle>
                 </CardHeader>
                 <CardContent className="text-muted-foreground text-sm space-y-1">
-                  <p><strong>Age:</strong> {product.age} days</p>
-                  <p><strong>Weight:</strong> {product.weight} kg</p>
-                  <p><strong>Unit:</strong> {product.unitName}</p>
-                  <p><strong>Stock:</strong> {product.stock}</p>
+                  <p>
+                    <strong>Age:</strong> {product.age} days
+                  </p>
+                  <p>
+                    <strong>Weight:</strong> {product.weight} kg
+                  </p>
+                  <p>
+                    <strong>Unit:</strong> {product.unitName}
+                  </p>
+                  <p>
+                    <strong>Stock:</strong> {product.stock}
+                  </p>
                 </CardContent>
               </Card>
               <Card className="border-none shadow-sm">
@@ -553,15 +629,23 @@ export default function ProductDetailPage() {
                   <CardTitle className="text-lg">Seller Information</CardTitle>
                 </CardHeader>
                 <CardContent className="text-muted-foreground text-sm space-y-1">
-                  <p><strong>Seller:</strong> {product.sellerName}</p>
-                  <p><strong>Location:</strong> {product.location}</p>
+                  <p>
+                    <strong>Seller:</strong> {product.sellerName}
+                  </p>
+                  <p>
+                    <strong>Location:</strong> {product.location}
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <div className="flex gap-4">
-              {userData?.role !== 'seller' && (
-                <Button size="lg" className="flex-1 gap-2" onClick={handleAddToCart}>
+              {userData?.role !== "seller" && (
+                <Button
+                  size="lg"
+                  className="flex-1 gap-2"
+                  onClick={handleAddToCart}
+                >
                   <ShoppingCart className="h-5 w-5" />
                   Add to Cart
                 </Button>
@@ -580,8 +664,12 @@ export default function ProductDetailPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle>Customer Reviews</CardTitle>
                   {checkingPurchase ? (
-                    <span className="text-sm text-muted-foreground">Checking purchase...</span>
-                  ) : hasPurchased && !hasUserReviewed && userData?.role === 'buyer' ? (
+                    <span className="text-sm text-muted-foreground">
+                      Checking purchase...
+                    </span>
+                  ) : hasPurchased &&
+                    !hasUserReviewed &&
+                    userData?.role === "buyer" ? (
                     <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Eligible to Review
@@ -591,86 +679,111 @@ export default function ProductDetailPage() {
               </CardHeader>
               <CardContent>
                 {/* Review Submission */}
-                {userData?.role === 'buyer' && hasPurchased && !hasUserReviewed && !checkingPurchase && (
-                  <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full mb-6 gap-2">
-                        <Star className="h-4 w-4" />
-                        Write a Review
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Submit Your Review</DialogTitle>
-                        <DialogDescription>Share your experience with {product.title}</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div>
-                          <Label htmlFor="rating">Rating *</Label>
-                          <div className="flex gap-1 mt-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => setReviewRating(star)}
-                                className="p-1"
-                              >
-                                <Star
-                                  className={`h-8 w-8 cursor-pointer transition-all ${
-                                    star <= reviewRating 
-                                      ? "fill-yellow-400 text-yellow-400 scale-110" 
-                                      : "text-muted-foreground hover:text-yellow-300"
-                                  }`}
-                                />
-                              </button>
-                            ))}
+                {userData?.role === "buyer" &&
+                  hasPurchased &&
+                  !hasUserReviewed &&
+                  !checkingPurchase && (
+                    <Dialog
+                      open={isReviewDialogOpen}
+                      onOpenChange={setIsReviewDialogOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full mb-6 gap-2">
+                          <Star className="h-4 w-4" />
+                          Write a Review
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Submit Your Review</DialogTitle>
+                          <DialogDescription>
+                            Share your experience with {product.title}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div>
+                            <Label htmlFor="rating">Rating *</Label>
+                            <div className="flex gap-1 mt-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setReviewRating(star)}
+                                  className="p-1"
+                                >
+                                  <Star
+                                    className={`h-8 w-8 cursor-pointer transition-all ${
+                                      star <= reviewRating
+                                        ? "fill-yellow-400 text-yellow-400 scale-110"
+                                        : "text-muted-foreground hover:text-yellow-300"
+                                    }`}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {reviewRating === 0
+                                ? "Select a rating"
+                                : reviewRating === 1
+                                  ? "Poor"
+                                  : reviewRating === 2
+                                    ? "Fair"
+                                    : reviewRating === 3
+                                      ? "Good"
+                                      : reviewRating === 4
+                                        ? "Very Good"
+                                        : "Excellent"}
+                            </p>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {reviewRating === 0 ? "Select a rating" : 
-                             reviewRating === 1 ? "Poor" :
-                             reviewRating === 2 ? "Fair" :
-                             reviewRating === 3 ? "Good" :
-                             reviewRating === 4 ? "Very Good" : "Excellent"}
-                          </p>
+                          <div>
+                            <Label htmlFor="comment">Review *</Label>
+                            <Textarea
+                              id="comment"
+                              placeholder="Share your experience with this product..."
+                              value={reviewText}
+                              onChange={(e) => setReviewText(e.target.value)}
+                              rows={4}
+                              className="mt-1"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Minimum 10 characters required
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="comment">Review *</Label>
-                          <Textarea
-                            id="comment"
-                            placeholder="Share your experience with this product..."
-                            value={reviewText}
-                            onChange={(e) => setReviewText(e.target.value)}
-                            rows={4}
-                            className="mt-1"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Minimum 10 characters required
-                          </p>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={handleReviewSubmit} 
-                          disabled={isSubmittingReview || reviewRating === 0 || reviewText.trim().length < 10}
-                        >
-                          {isSubmittingReview && <Spinner className="mr-2 h-4 w-4" />}
-                          Submit Review
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsReviewDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleReviewSubmit}
+                            disabled={
+                              isSubmittingReview ||
+                              reviewRating === 0 ||
+                              reviewText.trim().length < 10
+                            }
+                          >
+                            {isSubmittingReview && (
+                              <Spinner className="mr-2 h-4 w-4" />
+                            )}
+                            Submit Review
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
 
-                {userData?.role === 'buyer' && !hasPurchased && !checkingPurchase && (
-                  <div className="mb-6 p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Purchase this product to leave a review.
-                    </p>
-                  </div>
-                )}
+                {userData?.role === "buyer" &&
+                  !hasPurchased &&
+                  !checkingPurchase && (
+                    <div className="mb-6 p-4 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Purchase this product to leave a review.
+                      </p>
+                    </div>
+                  )}
 
                 {hasUserReviewed && (
                   <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -694,19 +807,21 @@ export default function ProductDetailPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold">{review.userName}</p>
-                              {userData && review.userName === `${userData.firstName} ${userData.lastName}`?.trim() && (
-                                <Badge variant="outline" className="text-xs">
-                                  You
-                                </Badge>
-                              )}
+                              {userData &&
+                                review.userName ===
+                                  `${userData.firstName} ${userData.lastName}`?.trim() && (
+                                  <Badge variant="outline" className="text-xs">
+                                    You
+                                  </Badge>
+                                )}
                             </div>
                             <div className="flex items-center gap-1">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
                                   className={`h-4 w-4 ${
-                                    i < review.rating 
-                                      ? "text-yellow-400 fill-yellow-400" 
+                                    i < review.rating
+                                      ? "text-yellow-400 fill-yellow-400"
                                       : "text-muted-foreground"
                                   }`}
                                 />
@@ -714,18 +829,25 @@ export default function ProductDetailPage() {
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {review.createdAt?.toDate 
-                              ? format(review.createdAt.toDate(), 'MMM dd, yyyy')
+                            {review.createdAt?.toDate
+                              ? format(
+                                  review.createdAt.toDate(),
+                                  "MMM dd, yyyy",
+                                )
                               : new Date(review.createdAt).toLocaleDateString()}
                           </p>
-                          <p className="mt-2 text-foreground">{review.comment}</p>
+                          <p className="mt-2 text-foreground">
+                            {review.comment}
+                          </p>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="mt-4 text-center py-8 text-muted-foreground">
                       <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>No reviews yet. Be the first to review this product!</p>
+                      <p>
+                        No reviews yet. Be the first to review this product!
+                      </p>
                     </div>
                   )}
                 </div>
